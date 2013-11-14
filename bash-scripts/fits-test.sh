@@ -16,7 +16,28 @@
 #	* Builds FITS and generates the more test output.
 #	* Use the FITS testing tool to compare the output.
 #	* If successful, i.e. the output is unchanged report success.
-#   * If unsuccessful use git-bisect to find the last good commit. 
+#   * If unsuccessful use git-bisect to find the last good commit.
+#
+# The FITS testing tool should be a command line application 
+# that tests 2 sets of FITS generated output and returns:
+#
+#  0     If the tests succeed
+#
+#  1-124 If the tests fail
+#
+#  125   If the tests cannot be performed
+#
+# These values are for use with git bisect run command
+# https://www.kernel.org/pub/software/scm/git/docs/git-bisect.html
+# http://git-scm.com/book/en/Git-Tools-Debugging-with-Git
+#
+# Script expects 2 parameters:
+#
+#  $1 path to the FITS testing tool to use
+#     Mandatory
+#
+#  $2 path to root directory of test corpora to use 
+#     Mandatory
 ##
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -100,6 +121,19 @@ findMergeBaseHash() {
 			mergeBaseHash=$REPLY
 		fi
 	done <<< "$gitshow"
+	
+	if [[ $mergeBaseHash == $gitcurrenthash ]]
+	then
+		echo "$currentBranch is a fresh branch and doesn't differ from its master root"
+		exit 1
+	fi
+}
+
+checkoutRevision() {
+	echo "Checking out revision $1"
+	gitcheckout=$(git checkout $1 .)
+	coOkRegEx="^Checking out revision $1"
+	echo "$gitcheckout"
 }
 
 checkGitStatus() {
@@ -118,10 +152,20 @@ buildFits() {
 	fi
 }
 
+findRelease() {
+	releaseDir=$(find .release -name "fits-*" -type d 2>&1)
+	if [[ ! -d "$releaseDir" ]]
+	then
+		echo "FITS release NOT found."
+		echo "$releaseDir"
+		exit 1;
+	fi
+}
+
 executeFits() {
-	outputDir="./.output/$gitcurrenthash"
+	outputDir="./.output/$1"
 	mkdir -p "$outputDir"
-	bash "$SCRIPT_DIR/execute-fits.sh" "$paramCorporaLoc" "$outputDir" 
+	bash "$SCRIPT_DIR/execute-fits.sh" "$paramCorporaLoc" "$outputDir" "$releaseDir"
 	if (( $? != 0))
 	then
 		exit $?;
@@ -131,15 +175,29 @@ executeFits() {
 ##
 # Script Execution Starts HERE 
 ##
+
+# Check and setup parameters
 checkParams "$@";
+# We're in a git repo with no uncommitted changes?
 checkGitStatus;
 echo "In git repo ${PWD##*/}"
+# There's a master branch and it's not checked out?
 checkMaster;
-echo "On branch: $currentBranch"
+echo "Testing branch: $currentBranch"
+# Grab the git details
 getCurrentBranchHash
 echo "HEAD commit $gitcurrenthash"
 findMergeBaseHash;
 echo "master base commit $mergeBaseHash"
+# Build current version of FITS
 buildFits;
-echo "Exectuting fits on corpora $paramCorporaLoc"
-executeFits;
+findRelease;
+# Execute FITS sending output to hash named output dir
+executeFits "$gitcurrenthash";
+# Checkout master branch base
+checkoutRevision "$mergeBaseHash"
+# Build master revision for comparison
+buildFits;
+findRelease;
+# Execute FITS sending output to hash named output dir
+executeFits "$mergeBaseHash";
