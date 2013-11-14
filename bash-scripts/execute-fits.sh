@@ -14,7 +14,6 @@
 #
 # Script can takes 3 parameters:
 #
-#
 #  $1 path to test corpora release
 #     defaults ./.corpora
 #
@@ -25,6 +24,8 @@
 #     defaults ./.release
 #  
 ##
+
+FITS_SHELL="fits.sh"
 
 outputDir=".output"
 fitsDir=".release"
@@ -69,9 +70,23 @@ checkParams () {
 
 }
 
-checkFits() {
-	
+checkFitsVersion() {
+	chmod +x "$fitsDir/$FITS_SHELL"
+	fitsver=$($fitsDir/$FITS_SHELL -v)
+	versRegEx="^[0-9.]+$"
+	if [[ ! $fitsver =~ $verRegEx ]]
+	then
+		echo "fits version not found"
+		echo "$fitsver"
+	fi
+}
+
+executeFits() {
+	echo "Executing FITS v. $fitsver"
+	fitsout=$($fitsDir/$FITS_SHELL -i $corporaDir -o $outputDir -r 2>&1)
+	echo "$fitsout"
 }
 
 checkParams "$@";
-
+checkFitsVersion;
+executeFits;
