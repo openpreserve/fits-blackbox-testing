@@ -19,11 +19,16 @@
 #   * If unsuccessful use git-bisect to find the last good commit. 
 ##
 
-ANT_SUCCESSFUL="SUCCESSFUL"
-LOCAL_RELEASE=".release"
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
 # Globals to hold the checked param vals
 paramFitsToolLoc=
 paramCorporaLoc=
+
+##
+# Functions defined first, control flow at the bottom of script
+##
+
 # Check the passed params to avoid disapointment
 checkParams () {
 # Ensure we have the correct number of params
@@ -46,27 +51,11 @@ checkParams () {
 # Check that the corpora directory exists
 	if  [[ ! -d "$paramCorporaLoc" ]]
 	then
-		echo "Output corpora directory not found: $paramCorporaLoc"
+		echo "Corpora directory not found: $paramCorporaLoc"
 		exit 1;
 	fi
 }
 
-# Check we're in a git repository, and there's no uncommitted changes 
-checkGitStatus() {
-	gitstatus=$(git status -z 2>&1)
-	while IFS= read -r
-	do
-		# Check we're in a git repo
-		isNotGitRepoFatal "$REPLY"
-		
-		# Other output means there's changes to commit
-		if [[ ! -z "$REPLY" ]]
-		then
-			echo "There are uncommitted changes in this repo: $REPLY";
-			exit 1;
-		fi
-	done <<< "$gitstatus"
-}
 
 # Check we've got a master branch and it's not checked out,
 # intended to be run on a development branch
@@ -96,6 +85,10 @@ checkMaster() {
 	fi
 }
 
+getCurrentBranchHash() {
+	gitcurrenthash=$(git rev-parse HEAD 2>&1)
+}
+
 # Find the hash of the current branch's split from master
 findMergeBaseHash() {
 	gitshow=$(git show --pretty=format:"%H" `git merge-base "$currentBranch" master` 2>&1)
@@ -109,75 +102,44 @@ findMergeBaseHash() {
 	done <<< "$gitshow"
 }
 
-# Test param string for not a git repo output and exit if found
-isNotGitRepoFatal() {
-	notGitRegEx="^fatal: Not a git repository"
-	if [[ $1 =~ $notGitRegEx ]]
+checkGitStatus() {
+	bash "$SCRIPT_DIR/check-git-status.sh"
+	if (( $? != 0))
 	then
-		echo "$1"
-		exit 1;
+		exit $?;
 	fi
 }
 
-# Build the FITS project invoking ant tasks
 buildFits() {
-	antclean=$(ant clean 2>&1)
-	echo "${PWD##*/}: ant clean"
-	testAntCommand "$antclean"
- 
-	antCompile=$(ant compile 2>&1)
-	echo "${PWD##*/}: ant compile"
-	testAntCommand "$antCompile"
-	
-	echo "${PWD##*/}: ant release"
-	if [[ -d "$LOCAL_RELEASE" ]]
+	bash "$SCRIPT_DIR/fits-ant-release.sh"
+	if (( $? != 0))
 	then
-		echo "Removing local release"
-		rm -rf "$LOCAL_RELEASE"
+		exit $?;
 	fi
-	antRelease=$(ant release <<< "$LOCAL_RELEASE" 2>&1)
-	testAntCommand "$antRelease"
 }
 
-# Run an ant command and test the status, exit if failes
-testAntCommand() {
-	antCommand=$1
-	wasAntSuccessful "$antCommand"
-	antStatus=$?
-	if (( ! $antStatus == 1 ))
+executeFits() {
+	outputDir="./.output/$gitcurrenthash"
+	mkdir -p "$outputDir"
+	bash "$SCRIPT_DIR/execute-fits.sh" "$paramCorporaLoc" "$outputDir" 
+	if (( $? != 0))
 	then
-		echo "BUILD FAILED"
-		echo "$currentBranch HEAD failed."
-		echo "$antCommand"
-		exit 1;
+		exit $?;
 	fi
 }
 
-# Run an ant command and parse the output for the build status
-wasAntSuccessful() {
-	antCmd=$1
-	buildRegEx="^BUILD ([A-Z]*)$"
-	antStatus="UNKOWN"
-	while IFS= read -r
-	do
-		if [[ $REPLY =~ $buildRegEx ]]
-		then
-			antStatus="${BASH_REMATCH[1]}"
-		fi
-	done <<< "$antCmd"
-
-	if [[ $antStatus == $ANT_SUCCESSFUL ]]
-	then 
-		return 1;
-	fi
-	
-	return 0;
-}
-
+##
+# Script Execution Starts HERE 
+##
 checkParams "$@";
 checkGitStatus;
 echo "In git repo ${PWD##*/}"
 checkMaster;
-echo "Current branch: $currentBranch"
+echo "On branch: $currentBranch"
+getCurrentBranchHash
+echo "HEAD commit $gitcurrenthash"
 findMergeBaseHash;
+echo "master base commit $mergeBaseHash"
 buildFits;
+echo "Exectuting fits on corpora $paramCorporaLoc"
+executeFits;
