@@ -82,9 +82,9 @@ checkFitsVersion() {
 }
 
 executeFits() {
-	echo "Executing FITS v. $fitsver"
+	echo "Running FITS v. $fitsver ...."
 	fitsout=$($fitsDir/$FITS_SHELL -i $corporaDir -o $outputDir -r 2>&1)
-	echo "$fitsout"
+	echo "Finished."
 }
 
 checkParams "$@";
