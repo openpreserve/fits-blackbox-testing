@@ -20,6 +20,7 @@
 ##
 
 ANT_SUCCESSFUL="SUCCESSFUL"
+LOCAL_RELEASE=".release"
 # Globals to hold the checked param vals
 paramFitsToolLoc=
 paramCorporaLoc=
@@ -61,8 +62,8 @@ checkGitStatus() {
 		# Other output means there's changes to commit
 		if [[ ! -z "$REPLY" ]]
 		then
-			echo "There are uncommitted changes in this repo: $REPLY EXIT NEEDED HERE";
-			# exit 1;
+			echo "There are uncommitted changes in this repo: $REPLY";
+			exit 1;
 		fi
 	done <<< "$gitstatus"
 }
@@ -95,6 +96,7 @@ checkMaster() {
 	fi
 }
 
+# Find the hash of the current branch's split from master
 findMergeBaseHash() {
 	gitshow=$(git show --pretty=format:"%H" `git merge-base "$currentBranch" master` 2>&1)
 	shaRegEx="^[0-9a-f]{40}$"
@@ -117,27 +119,43 @@ isNotGitRepoFatal() {
 	fi
 }
 
+# Build the FITS project invoking ant tasks
 buildFits() {
-	antCommand=$(ant clean 2>&1)
+	antclean=$(ant clean 2>&1)
+	echo "${PWD##*/}: ant clean"
+	testAntCommand "$antclean"
+ 
+	antCompile=$(ant compile 2>&1)
+	echo "${PWD##*/}: ant compile"
+	testAntCommand "$antCompile"
+	
+	echo "${PWD##*/}: ant release"
+	if [[ -d "$LOCAL_RELEASE" ]]
+	then
+		echo "Removing local release"
+		rm -rf "$LOCAL_RELEASE"
+	fi
+	antRelease=$(ant release <<< "$LOCAL_RELEASE" 2>&1)
+	testAntCommand "$antRelease"
+}
+
+# Run an ant command and test the status, exit if failes
+testAntCommand() {
+	antCommand=$1
 	wasAntSuccessful "$antCommand"
 	antStatus=$?
 	if (( ! $antStatus == 1 ))
 	then
-		echo "ant status: $antSatus"
+		echo "BUILD FAILED"
+		echo "$currentBranch HEAD failed."
+		echo "$antCommand"
+		exit 1;
 	fi
-	 
-	antCommand=$(ant compile 2>&1)
-	wasAntSuccessful "$antCommand"
-	if (( ! $antStatus == 1 ))
-	then
-		echo "ant status: $antSatus"
-	fi
-	
-	ant release <<< "release"
 }
 
+# Run an ant command and parse the output for the build status
 wasAntSuccessful() {
-	antCommand=$1
+	antCmd=$1
 	buildRegEx="^BUILD ([A-Z]*)$"
 	antStatus="UNKOWN"
 	while IFS= read -r
@@ -146,7 +164,7 @@ wasAntSuccessful() {
 		then
 			antStatus="${BASH_REMATCH[1]}"
 		fi
-	done <<< "$antCommand"
+	done <<< "$antCmd"
 
 	if [[ $antStatus == $ANT_SUCCESSFUL ]]
 	then 
