@@ -45,7 +45,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Globals to hold the checked param vals
 paramFitsToolLoc=
 paramCorporaLoc=
-
+resetHead=0
 ##
 # Functions defined first, control flow at the bottom of script
 ##
@@ -106,8 +106,9 @@ checkMaster() {
 	fi
 }
 
-getCurrentBranchHash() {
-	gitcurrenthash=$(git rev-parse HEAD 2>&1)
+# Get the commit hash of the current branch HEAD
+getHeadHash() {
+	githeadhash=$(git rev-parse HEAD 2>&1)
 }
 
 # Find the hash of the current branch's split from master
@@ -118,17 +119,18 @@ findMergeBaseHash() {
 	do 
 		if [[ $REPLY =~ $shaRegEx ]]
 		then
-			mergeBaseHash=$REPLY
+			mergebasehash=$REPLY
 		fi
 	done <<< "$gitshow"
 	
-	if [[ $mergeBaseHash == $gitcurrenthash ]]
+	if [[ $mergebasehash == $githeadhash ]]
 	then
 		echo "$currentBranch is a fresh branch and doesn't differ from its master root"
 		exit 1
 	fi
 }
 
+# Checkout a particular revision on the current branch by hash
 checkoutRevision() {
 	echo "Checking out revision $1"
 	gitcheckout=$(git checkout $1 .)
@@ -136,39 +138,55 @@ checkoutRevision() {
 	echo "$gitcheckout"
 }
 
+# Invoke the checkGitStatus script, exit on failure
 checkGitStatus() {
 	bash "$SCRIPT_DIR/check-git-status.sh"
 	if (( $? != 0))
 	then
+		resetHead
 		exit $?;
 	fi
 }
 
+# Invoke the ant-release script, exit on failure
 buildFits() {
 	bash "$SCRIPT_DIR/fits-ant-release.sh"
 	if (( $? != 0))
 	then
+		resetHead
 		exit $?;
 	fi
 }
 
+# Find the unzipped release directory
 findRelease() {
 	releaseDir=$(find .release -name "fits-*" -type d 2>&1)
 	if [[ ! -d "$releaseDir" ]]
 	then
 		echo "FITS release NOT found."
 		echo "$releaseDir"
+		resetHead
 		exit 1;
 	fi
 }
 
+# Setup output directory and execute FITS
 executeFits() {
 	outputDir="./.output/$1"
 	mkdir -p "$outputDir"
 	bash "$SCRIPT_DIR/execute-fits.sh" "$paramCorporaLoc" "$outputDir" "$releaseDir"
 	if (( $? != 0))
 	then
+		resetHead
 		exit $?;
+	fi
+}
+
+# Output warning r.e. current git status, IF warning flag set 
+resetHead() {
+	if (( $resetHead == 1 ))
+	then
+		git reset HEAD --hard
 	fi
 }
 
@@ -185,19 +203,23 @@ echo "In git repo ${PWD##*/}"
 checkMaster;
 echo "Testing branch: $currentBranch"
 # Grab the git details
-getCurrentBranchHash
-echo "HEAD commit $gitcurrenthash"
+getHeadHash
+echo "HEAD $githeadhash"
 findMergeBaseHash;
-echo "master base commit $mergeBaseHash"
+echo "BASE commit $mergebasehash"
 # Build current version of FITS
 buildFits;
 findRelease;
 # Execute FITS sending output to hash named output dir
-executeFits "$gitcurrenthash";
+executeFits "$githeadhash";
+# Set reset HEAD flag, we're about to check out changes
+resetHead=1
 # Checkout master branch base
-checkoutRevision "$mergeBaseHash"
+checkoutRevision "$mergebasehash"
 # Build master revision for comparison
 buildFits;
 findRelease;
 # Execute FITS sending output to hash named output dir
-executeFits "$mergeBaseHash";
+executeFits "$mergebasehash";
+# Reset repo to head
+resetHead;
