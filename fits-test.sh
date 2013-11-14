@@ -118,7 +118,6 @@ isNotGitRepoFatal() {
 }
 
 buildFits() {
-	cd ~/dev/git-hub/openplanets/fits
 	antCommand=$(ant clean 2>&1)
 	wasAntSuccessful "$antCommand"
 	antStatus=$?
