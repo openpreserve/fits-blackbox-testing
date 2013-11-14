@@ -12,22 +12,43 @@ public class Controller {
 
   private CLI mCLI;
 
+  private ControllerState mState;
+
   private String[] mInput;
 
-  public Controller(CLI cli) {
+  public Controller(CLI cli, ControllerState state) {
     mCLI = cli;
+    mState = state;
   }
 
   public void setInput( String... args ) {
     mInput = args;
   }
 
-  public int run() {
-    
-    if ( mInput == null ) {
-      // TODO proper logging
+  public void run() {
+
+    if ( !isValidInput() ) {
+      // TODO log
       printHelp();
-      return 1; // TODO proper exit code;
+      return;
+    }
+
+    String sfp = mCLI.getSourceFolderPath();
+    String cfp = mCLI.getCandidateFolderPath();
+    String key = mCLI.getComparisonKey();
+
+    // TODO iterate over source folder and compare file by file.
+  }
+
+  public ControllerState getState() {
+    return mState;
+  }
+
+  private boolean isValidInput() {
+
+    if ( mInput == null ) {
+      handleState( ControllerState.SYSTEM_ERROR );
+      return false;
     }
 
     try {
@@ -36,32 +57,18 @@ public class Controller {
 
     } catch ( ParseException e ) {
 
-      printHelp();
-      
-      int exitCode = e.getMessage().equals( "HELP" ) ? 0 : 2;
+      if ( e.getMessage().equals( "HELP" ) ) {
+        handleState( ControllerState.OK );
+      } else {
+        handleState( ControllerState.SYSTEM_ERROR );
+      }
 
-      return exitCode;
-
+      return false;
     }
 
-    String sfp = mCLI.getSourceFolderPath();
-    String cfp = mCLI.getCandidateFolderPath();
-    String key = mCLI.getComparisonKey();
-
-    if ( !isValidInput( sfp, cfp ) ) {
-      // TODO log
-      return 3; // TODO proper exit code
-    }
-       
-    // TODO iterate over source folder and compare file by file.
-    return 0;
-  }
-
-  private boolean isValidInput( String sfp, String cfp ) {
     boolean valid = true;
-
-    File sourceFolder = new File( sfp );
-    File candidateFolder = new File( cfp );
+    File sourceFolder = new File( mCLI.getSourceFolderPath() );
+    File candidateFolder = new File( mCLI.getCandidateFolderPath() );
 
     File[] sourceFiles = sourceFolder.listFiles( new FitsFileFilter() );
     File[] candidateFiles = candidateFolder.listFiles( new FitsFileFilter() );
@@ -72,10 +79,15 @@ public class Controller {
 
     return valid;
   }
-  
+
   private void printHelp() {
     HelpFormatter formatter = new HelpFormatter();
     formatter.printHelp( "fbt", mCLI.getOptions() );
+  }
+
+  private void handleState( int state ) {
+    mState.assignState( state );
+    // TODO do also logging...
   }
 
   private class FitsFileFilter implements FileFilter {
