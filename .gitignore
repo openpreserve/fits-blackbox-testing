@@ -11,3 +11,8 @@ bin/
 
 # Eclipse
 .project
+.classpath
+.settings/
+
+# Mac OS X
+.DS_Store
