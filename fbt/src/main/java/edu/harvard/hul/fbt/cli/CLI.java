@@ -55,7 +55,7 @@ public class CLI {
     CommandLine cmd = mParser.parse( mOptions, args );
 
     if ( cmd.hasOption( 'h' ) ) {
-      throw new ParseException( "" );
+      throw new ParseException( "HELP" );
     }
     
     if (cmd.hasOption( 's' )) {

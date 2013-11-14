@@ -1,13 +1,15 @@
 package edu.harvard.hul.fbt;
 
-/**
- * Hello world!
- *
- */
-public class App 
-{
-    public static void main( String[] args )
-    {
-        System.out.println( "Hello World!" );
-    }
+import edu.harvard.hul.fbt.cli.CLI;
+
+public class App {
+  public static void main( String[] args ) {
+    CLI cli = new CLI();
+    Controller controller = new Controller( cli );
+    controller.setInput( args );    
+    int exitCode = controller.run();
+    
+    System.out.println( String.format( "exitCode %d", exitCode ) );
+    System.exit( exitCode );
+  }
 }
