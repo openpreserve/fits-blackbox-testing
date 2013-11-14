@@ -2,6 +2,9 @@ package edu.harvard.hul.fbt;
 
 import java.io.File;
 import java.io.FileFilter;
+import java.util.Arrays;
+import java.util.Iterator;
+import java.util.List;
 
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.ParseException;
@@ -37,7 +40,7 @@ public class Controller {
     String cfp = mCLI.getCandidateFolderPath();
     String key = mCLI.getComparisonKey();
 
-    // TODO iterate over source folder and compare file by file.
+    traverseFiles( sfp, cfp );
   }
 
   public ControllerState getState() {
@@ -88,6 +91,39 @@ public class Controller {
   private void handleState( int state ) {
     mState.assignState( state );
     // TODO do also logging...
+  }
+
+  private void traverseFiles( String sourceFolderPath, String candidateFolderPath ) {
+    FitsFileFilter filter = new FitsFileFilter();
+    File sourceFolder = new File( sourceFolderPath );
+    File candidateFolder = new File( candidateFolderPath );
+    List<File> sourceFiles = Arrays.asList( sourceFolder.listFiles( filter ) );
+    List<File> candidateFiles = Arrays.asList( candidateFolder.listFiles( filter ) );
+
+    Iterator<File> iter = sourceFiles.iterator();
+    while ( iter.hasNext() ) {
+      File sf = iter.next();
+      File cf = new File( candidateFolder, sf.getName() );
+
+      if ( candidateFiles.contains( cf ) ) {
+        // TODO compare both files
+        // TODO handle state
+        // TODO log output
+        
+        candidateFiles.remove( cf );
+      } else {
+        handleState( ControllerState.FILE_MISSING_CANDIDATE );
+        
+      }
+      
+      iter.remove();
+      
+    }
+    
+    if (candidateFiles.size() > 0) {
+      handleState( ControllerState.FILE_MISSING_SOURCE );
+      //TODO iterate and log
+    }
   }
 
   private class FitsFileFilter implements FileFilter {
