@@ -1,5 +1,6 @@
 package edu.harvard.hul.fbt;
 
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -43,6 +44,21 @@ public class MissingToolOutputRule {
 
   public Set<String> getMissingTools() {
     return mMissingTools;
+  }
+
+  public ComparisonResult getComparisonResult() {
+    int statusCode;
+    List<String> logs = new ArrayList<String>();
+    if (hasMissing()) {
+      statusCode = ControllerState.TOOL_MISSING_OUTPUT;
+      for (String t : getMissingTools()) {
+        logs.add(String.format("Missing tool: ['%s']", t));
+      }
+    } else {
+      statusCode = ControllerState.OK;
+    }
+
+    return new ComparisonResult(statusCode, logs);
   }
 
 }

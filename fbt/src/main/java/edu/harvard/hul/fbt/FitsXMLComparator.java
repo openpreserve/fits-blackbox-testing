@@ -1,7 +1,6 @@
 package edu.harvard.hul.fbt;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.List;
 
 import org.custommonkey.xmlunit.DetailedDiff;
@@ -22,19 +21,12 @@ public class FitsXMLComparator {
 
   }
 
-  public int compare(String source, String candidate) {
+  public ComparisonResult compare(String source, String candidate) {
     DetailedDiff myDiff;
+    ComparisonResult result = new ComparisonResult();
     try {
       myDiff = new DetailedDiff(new Diff(source, candidate));
       myDiff.overrideElementQualifier(new ElementNameAndAttributeQualifier("toolname"));
-
-      // if ( myDiff.similar() ) {
-      // System.out.println( "XML similar: " );
-      // }
-      //
-      // if ( myDiff.identical() ) {
-      // System.out.println( "XML identical: " );
-      // }
 
       List<Difference> allDifferences = myDiff.getAllDifferences();
 
@@ -51,18 +43,15 @@ public class FitsXMLComparator {
       rule.checkDifferences(allDifferences);
       
       if (rule.hasMissing()) {
-        //System.out.println(Arrays.deepToString(rule.getMissingTools().toArray()));
-        return ControllerState.TOOL_MISSING_OUTPUT;
+        result.mergeResults(rule.getComparisonResult());
       }
 
     } catch (SAXException e) {
       e.printStackTrace();
-      return ControllerState.SYSTEM_ERROR;
     } catch (IOException e) {
       e.printStackTrace();
-      return ControllerState.SYSTEM_ERROR;
     }
 
-    return  ControllerState.OK;
+    return  result;
   }
 }

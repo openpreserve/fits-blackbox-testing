@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.ParseException;
@@ -99,6 +100,21 @@ public class Controller {
     mState.assignState( state );
     // TODO do also logging...
   }
+  
+  private void handleComparisonResult(String comparisonKey, ComparisonResult result) {
+    Set<Integer> statusCodes = result.getStatusCodes();
+    List<String> logs = result.getLogs();
+    for (int sc : statusCodes) {
+      mState.assignState(sc);
+    }
+    
+    for (String l : logs) {
+      //TODO write logs.
+      // the log writer should cache the logs and even compress them.
+      // they should be written upon flush at the end. 
+      System.out.println(comparisonKey + ": " + l);
+    }
+  }
 
   private void traverseFiles( String sourceFolderPath, String candidateFolderPath ) {
     FitsFileFilter filter = new FitsFileFilter();
@@ -117,14 +133,14 @@ public class Controller {
           String sXML = IOUtils.toString( new FileInputStream( sf ) );
           String cXML = IOUtils.toString( new FileInputStream( cf ) );
           //System.out.println( "Comparing: " + sf.getName() );
-          int state = mComparator.compare( sXML, cXML );
-          handleState(state);
+          ComparisonResult result = mComparator.compare( sXML, cXML );
+          handleComparisonResult(sf.getName(), result);
 
         } catch ( IOException e ) {
           e.printStackTrace();
           handleState( ControllerState.SYSTEM_ERROR );
         }
-        // TODO compare both files
+        
         // TODO handle state
         // TODO log output
 
