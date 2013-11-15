@@ -50,7 +50,6 @@ buildFits() {
 	echo "${PWD##*/}: ant release"
 	if [[ -d "$RELEASE_DIR" ]]
 	then
-		echo "Removing $RELEASE_DIR"
 		rm -rf "$RELEASE_DIR"
 	fi
 	antRelease=$(ant release <<< "$RELEASE_DIR" 2>&1)
@@ -92,13 +91,15 @@ wasAntSuccessful() {
 
 unpackFits() {
 	# Find the FITS release .zip
-	findzip=$(find $RELEASE_DIR -name fits*.zip -type f 2>&1)
+	cd $RELEASE_DIR
+	findzip=$(find . -name "fits*.zip" -type f 2>&1)
 	if [[ ! -e "$findzip" ]]
 	then
 		echo "Couldn't find FITS release zip."
 		exit 1;
 	fi
-	unzip "$findzip"
+	unziprelease=$(unzip "$findzip")
+	rm "$findzip"
 }
 
 checkParams "$@";
