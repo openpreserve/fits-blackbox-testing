@@ -36,24 +36,27 @@ public class ControllerState {
         CONFLICT_RESOLUTION, CONFLICT_INTRODUCTION, MULTIPLE_PROBLEMS };
   }
 
-  public void assignState( int state ) {
-
-    if ( !isValidState( state ) ) {
+  public void assignState(int state) {
+    if (!isValidState(state)) {
       mState = SYSTEM_ERROR;
+    } else if (state == SYSTEM_ERROR) {
+      mState = SYSTEM_ERROR;
+    } else if (state == OK) {
+      mState = (mState == OK) ? state : mState;
     } else {
-      mState = (mState == OK) ? state : MULTIPLE_PROBLEMS;
+      mState = (mState == OK || mState == state) ? state : MULTIPLE_PROBLEMS;
     }
 
   }
-  
+
   public int getExitCode() {
     return mState;
   }
 
-  public boolean isValidState( int state ) {
+  public boolean isValidState(int state) {
     boolean exists = false;
-    for ( int s : mStates ) {
-      if ( s == state ) {
+    for (int s : mStates) {
+      if (s == state) {
         exists = true;
         break;
       }

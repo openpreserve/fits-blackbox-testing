@@ -116,8 +116,9 @@ public class Controller {
         try {
           String sXML = IOUtils.toString( new FileInputStream( sf ) );
           String cXML = IOUtils.toString( new FileInputStream( cf ) );
-          System.out.println( "Comparing: " + sf.getName() );
-          mComparator.compare( sXML, cXML );
+          //System.out.println( "Comparing: " + sf.getName() );
+          int state = mComparator.compare( sXML, cXML );
+          handleState(state);
 
         } catch ( IOException e ) {
           e.printStackTrace();
