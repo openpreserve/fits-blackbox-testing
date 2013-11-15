@@ -190,6 +190,32 @@ resetHead() {
 	fi
 }
 
+
+testHeadAgainstMergeBase() {
+ 	java  -jar "$paramFitsToolLoc" 	".output/$mergebasehash" ".output/$githeadhash" "$githeadhash"
+ 	case "$?" in
+ 		# Test passed so no need to look for broken revision
+ 		"0" )
+ 		echo "Test of HEAD against branch base succeeded, no broken revision to find."
+ 		resetHead
+ 		exit 0;
+ 		;;
+ 		# Test of dev branch HEAD against master couldn't be performed
+		# We probably don't want to go on until tests execute
+ 		"125" )
+ 		echo "Test of HEAD against branch base could not be performed"
+ 		resetHead
+ 		exit 1;
+ 		;;
+ 		# Test failed, exit for now but the start for the
+		# revision that broke the test starts here
+ 		* )
+ 		echo "Test of HEAD against branch base failed"
+ 		resetHead
+ 		exit 1;
+ 	esac
+}
+
 ##
 # Script Execution Starts HERE 
 ##
@@ -221,5 +247,8 @@ buildFits;
 findRelease;
 # Execute FITS sending output to hash named output dir
 executeFits "$mergebasehash";
+
+testHeadAgainstMergeBase;
+
 # Reset repo to head
 resetHead;
