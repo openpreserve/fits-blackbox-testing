@@ -173,6 +173,10 @@ findRelease() {
 # Setup output directory and execute FITS
 executeFits() {
 	outputDir="./.output/$1"
+	if [[ -d "$outputDir" ]]
+	then
+		rm -rf "$outputDir"
+	fi
 	mkdir -p "$outputDir"
 	bash "$SCRIPT_DIR/execute-fits.sh" "$paramCorporaLoc" "$outputDir" "$releaseDir"
 	if (( $? != 0))
