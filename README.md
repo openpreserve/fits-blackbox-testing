@@ -46,11 +46,7 @@ You should see:
 # On branch <my branch name>
 nothing to commit (working directory clean)
 ```
-and typing:
-```
-git status -s
-```
-should return no output.
+and typing ```git status -s``` returns no output.
 
 *TODO:* Document this workflow with worked examples using FITS branch.
 
