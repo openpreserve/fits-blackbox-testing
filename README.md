@@ -2,6 +2,19 @@
 
 This project provides test scripts and tools for software developers contributing to the Harvard File Information Toolkit ([FITS](https://github.com/harvard-lts/fits)) project.
 
+#Features and Roadmap
+
+##Features
+
+Version 0.0.1
+
+- Tests current committted development branch HEAD against master BASE
+
+##Roadmap:
+
+- If candidate HEAD fails test use [git bisect](https://www.kernel.org/pub/software/scm/git/docs/git-bisect.html) to identify commit to BLAME.
+- Add sample FITS testing tools.
+
 #Installation and Use
 
 ## Pre-Requisites
