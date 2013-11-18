@@ -19,21 +19,13 @@ public class MissingToolOutputRule {
     mMissingTools = new HashSet<String>();
   }
 
-  public void checkDifferences(List<Difference> differences) {
+  public void checkDifferences( List<Difference> differences ) {
     for (Difference d : differences) {
       if (d.getId() == DifferenceConstants.CHILD_NODE_NOT_FOUND_ID) {
         NodeDetail controlNodeDetail = d.getControlNodeDetail();
         Node node = controlNodeDetail.getNode();
 
-        if (node != null) {
-          NamedNodeMap attributes = node.getAttributes();
-          if (attributes != null) {
-            Node toolname = attributes.getNamedItem("toolname");
-            if (toolname != null) {
-              mMissingTools.add(toolname.getNodeValue());
-            }
-          }
-        }
+        handleNode( node );
       }
     }
   }
@@ -52,13 +44,33 @@ public class MissingToolOutputRule {
     if (hasMissing()) {
       statusCode = ControllerState.TOOL_MISSING_OUTPUT;
       for (String t : getMissingTools()) {
-        logs.add(String.format("Missing tool: ['%s']", t));
+        logs.add( String.format( "Missing tool: ['%s']", t ) );
       }
     } else {
       statusCode = ControllerState.OK;
     }
 
-    return new ComparisonResult(statusCode, logs);
+    return new ComparisonResult( statusCode, logs );
   }
 
+  private void handleNode( Node node ) {
+    if (node != null) {
+      NamedNodeMap attributes = node.getAttributes();
+      if (attributes != null) {
+        Node toolname = attributes.getNamedItem( "toolname" );
+        if (toolname != null) {
+          String tool = toolname.getNodeValue();
+          if (tool != null) {
+            if (tool.equals( "FITS" )) {
+              Node child = node.getFirstChild();
+              handleNode( child );
+            } else {
+              mMissingTools.add( toolname.getNodeValue() );
+            }
+          }
+
+        }
+      }
+    }
+  }
 }

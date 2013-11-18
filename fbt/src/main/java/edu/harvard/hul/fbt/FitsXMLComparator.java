@@ -1,7 +1,10 @@
 package edu.harvard.hul.fbt;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import org.custommonkey.xmlunit.DetailedDiff;
 import org.custommonkey.xmlunit.Diff;
@@ -13,20 +16,20 @@ import org.xml.sax.SAXException;
 public class FitsXMLComparator {
 
   public FitsXMLComparator() {
-    XMLUnit.setCompareUnmatched(false);
-    XMLUnit.setIgnoreAttributeOrder(true);
-    XMLUnit.setIgnoreComments(true);
-    XMLUnit.setIgnoreWhitespace(true);
-    XMLUnit.setIgnoreDiffBetweenTextAndCDATA(true);
+    XMLUnit.setCompareUnmatched( false );
+    XMLUnit.setIgnoreAttributeOrder( true );
+    XMLUnit.setIgnoreComments( true );
+    XMLUnit.setIgnoreWhitespace( true );
+    XMLUnit.setIgnoreDiffBetweenTextAndCDATA( true );
 
   }
 
-  public ComparisonResult compare(String source, String candidate) {
+  public List<Anomaly> compare( String fileName, String source, String candidate ) {
     DetailedDiff myDiff;
-    ComparisonResult result = new ComparisonResult();
+    List<Anomaly> anomalies = new ArrayList<Anomaly>();
     try {
-      myDiff = new DetailedDiff(new Diff(source, candidate));
-      myDiff.overrideElementQualifier(new ElementNameAndAttributeQualifier("toolname"));
+      myDiff = new DetailedDiff( new Diff( source, candidate ) );
+      myDiff.overrideElementQualifier( new ElementNameAndAttributeQualifier( "toolname" ) );
 
       List<Difference> allDifferences = myDiff.getAllDifferences();
 
@@ -40,10 +43,17 @@ public class FitsXMLComparator {
       // Callback vs Return Type?
 
       MissingToolOutputRule rule = new MissingToolOutputRule();
-      rule.checkDifferences(allDifferences);
-      
+      rule.checkDifferences( allDifferences );
+
       if (rule.hasMissing()) {
-        result.mergeResults(rule.getComparisonResult());
+
+        for (String tool : rule.getMissingTools()) {
+          Anomaly a = new Anomaly( Anomaly.MISSING_TOOL, fileName );
+          a.setData( tool );
+          anomalies.add( a );
+
+        }
+
       }
 
     } catch (SAXException e) {
@@ -52,6 +62,6 @@ public class FitsXMLComparator {
       e.printStackTrace();
     }
 
-    return  result;
+    return anomalies;
   }
 }

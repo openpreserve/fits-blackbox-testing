@@ -7,7 +7,8 @@ public class App {
     CLI cli = new CLI();
     ControllerState state = new ControllerState();
     FitsXMLComparator comp = new FitsXMLComparator();
-    Controller controller = new Controller( cli, state, comp );
+    LogWriter log = new LogWriter();
+    Controller controller = new Controller( cli, state, comp, log );
     controller.setInput( args );
     controller.run();
 
@@ -23,7 +24,7 @@ public class App {
       exitCode = ControllerState.SYSTEM_ERROR;
 
     } finally {
-      //System.out.println( String.format( "exitCode %d", exitCode ) );
+      System.out.println( String.format( "exitCode %d", exitCode ) );
       System.exit( exitCode );
     }
   }

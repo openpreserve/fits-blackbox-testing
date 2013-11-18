@@ -1,13 +1,17 @@
 package edu.harvard.hul.fbt;
 
 import java.io.File;
-import java.io.FileFilter;
 import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FilenameFilter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 
 import org.apache.commons.cli.HelpFormatter;
@@ -24,12 +28,15 @@ public class Controller {
 
   private FitsXMLComparator mComparator;
 
+  private LogWriter mLogger;
+
   private String[] mInput;
 
-  public Controller(CLI cli, ControllerState state, FitsXMLComparator comp) {
+  public Controller( CLI cli, ControllerState state, FitsXMLComparator comp, LogWriter log ) {
     mCLI = cli;
     mState = state;
     mComparator = comp;
+    mLogger = log;
   }
 
   public void setInput( String... args ) {
@@ -38,7 +45,7 @@ public class Controller {
 
   public void run() {
 
-    if ( !isValidInput() ) {
+    if (!isValidInput()) {
       // TODO log
       printHelp();
       return;
@@ -49,6 +56,7 @@ public class Controller {
     String key = mCLI.getComparisonKey();
 
     traverseFiles( sfp, cfp );
+    mLogger.flush( key );
   }
 
   public ControllerState getState() {
@@ -57,7 +65,7 @@ public class Controller {
 
   private boolean isValidInput() {
 
-    if ( mInput == null ) {
+    if (mInput == null) {
       handleState( ControllerState.SYSTEM_ERROR );
       return false;
     }
@@ -66,9 +74,9 @@ public class Controller {
 
       mCLI.parse( mInput );
 
-    } catch ( ParseException e ) {
+    } catch (ParseException e) {
 
-      if ( e.getMessage().equals( "HELP" ) ) {
+      if (e.getMessage().equals( "HELP" )) {
         handleState( ControllerState.OK );
       } else {
         handleState( ControllerState.SYSTEM_ERROR );
@@ -84,7 +92,7 @@ public class Controller {
     File[] sourceFiles = sourceFolder.listFiles( new FitsFileFilter() );
     File[] candidateFiles = candidateFolder.listFiles( new FitsFileFilter() );
 
-    if ( sourceFiles == null || sourceFiles.length == 0 || candidateFiles == null || candidateFiles.length == 0 ) {
+    if (sourceFiles == null || sourceFiles.length == 0 || candidateFiles == null || candidateFiles.length == 0) {
       valid = false;
     }
 
@@ -98,22 +106,81 @@ public class Controller {
 
   private void handleState( int state ) {
     mState.assignState( state );
-    // TODO do also logging...
   }
-  
-  private void handleComparisonResult(String comparisonKey, ComparisonResult result) {
-    Set<Integer> statusCodes = result.getStatusCodes();
-    List<String> logs = result.getLogs();
-    for (int sc : statusCodes) {
-      mState.assignState(sc);
+
+  private void handleAnomalies( List<Anomaly> anomalies ) {
+    List<Anomaly> missingTools = getAnomaliesByType( anomalies, Anomaly.MISSING_TOOL );
+
+    FitsFileFilter filter = new FitsFileFilter();
+    List<File> candidateNames = new ArrayList<File>( Arrays.asList( new File( mCLI.getCandidateFolderPath() )
+        .listFiles( filter ) ) );
+
+    Map<String, List<String>> aggregatedTools = new HashMap<String, List<String>>();
+
+    for (Anomaly a : missingTools) {
+      mLogger.submitLog( a.getFileName(), String.format( "Missing tool: [%s]", a.getData() ) );
+
+      List<String> list = aggregatedTools.get( a.getData().toString() );
+
+      if (list == null) {
+        list = new ArrayList<String>();
+        list.add( a.getFileName() );
+        aggregatedTools.put( a.getData().toString(), list );
+      } else {
+        list.add( a.getFileName() );
+      }
     }
-    
-    for (String l : logs) {
-      //TODO write logs.
-      // the log writer should cache the logs and even compress them.
-      // they should be written upon flush at the end. 
-      System.out.println(comparisonKey + ": " + l);
+
+    Iterator<File> candidateFiles = candidateNames.iterator();
+    Map<String, Boolean> globalMissingTools = new HashMap<String, Boolean>();
+    while (candidateFiles.hasNext()) {
+      File file = candidateFiles.next();
+      try {
+
+        String cXML = IOUtils.toString( new FileInputStream( file ) );
+
+        for (String tool : aggregatedTools.keySet()) {
+
+          Boolean global = globalMissingTools.get( tool );
+          if (global == null) {
+            globalMissingTools.put( tool, true );
+            break;
+          }
+
+          if (global == true && cXML.contains( String.format( "toolname=\"%s\"", tool ) )) {
+            globalMissingTools.put( tool, false );
+          }
+
+        }
+      } catch (FileNotFoundException e) {
+        e.printStackTrace();
+      } catch (IOException e) {
+        e.printStackTrace();
+      }
     }
+
+    for (String tool : globalMissingTools.keySet()) {
+      if (globalMissingTools.get( tool )) {
+        mLogger.submitGlobalLog( String.format( "[%s] is missing from all candidate files, where it was also present in the source file", tool ) );
+        handleState( ControllerState.TOOL_MISSING_OUTPUT );
+
+      }
+    }
+
+  }
+
+  private List<Anomaly> getAnomaliesByType( List<Anomaly> anomalies, String type ) {
+    List<Anomaly> result = new ArrayList<Anomaly>();
+
+    if (anomalies != null) {
+      for (Anomaly a : anomalies) {
+        if (a.getType().equals( type )) {
+          result.add( a );
+        }
+      }
+    }
+
+    return result;
   }
 
   private void traverseFiles( String sourceFolderPath, String candidateFolderPath ) {
@@ -122,31 +189,34 @@ public class Controller {
     File candidateFolder = new File( candidateFolderPath );
     List<File> sourceFiles = new ArrayList<File>( Arrays.asList( sourceFolder.listFiles( filter ) ) );
     List<File> candidateFiles = new ArrayList<File>( Arrays.asList( candidateFolder.listFiles( filter ) ) );
+    List<Anomaly> anomalies = new ArrayList<Anomaly>();
 
     Iterator<File> iter = sourceFiles.iterator();
-    while ( iter.hasNext() ) {
+    while (iter.hasNext()) {
       File sf = iter.next();
       File cf = new File( candidateFolder, sf.getName() );
 
-      if ( candidateFiles.contains( cf ) ) {
+      if (candidateFiles.contains( cf )) {
         try {
           String sXML = IOUtils.toString( new FileInputStream( sf ) );
           String cXML = IOUtils.toString( new FileInputStream( cf ) );
-          //System.out.println( "Comparing: " + sf.getName() );
-          ComparisonResult result = mComparator.compare( sXML, cXML );
-          handleComparisonResult(sf.getName(), result);
+          // System.out.println( "Comparing: " + sf.getName() );
 
-        } catch ( IOException e ) {
+          anomalies.addAll( mComparator.compare( cf.getName(), sXML, cXML ) );
+
+        } catch (IOException e) {
           e.printStackTrace();
           handleState( ControllerState.SYSTEM_ERROR );
         }
-        
+
         // TODO handle state
         // TODO log output
 
         candidateFiles.remove( cf );
       } else {
-        handleState( ControllerState.FILE_MISSING_CANDIDATE );
+
+        Anomaly a = new Anomaly( Anomaly.MISSING_CANDIDATE, cf.getName() );
+        anomalies.add( a );
 
       }
 
@@ -154,16 +224,21 @@ public class Controller {
 
     }
 
-    if ( candidateFiles.size() > 0 ) {
-      handleState( ControllerState.FILE_MISSING_SOURCE );
-      // TODO iterate and log
+    if (candidateFiles.size() > 0) {
+      for (File f : candidateFiles) {
+        Anomaly a = new Anomaly( Anomaly.MISSING_SOURCE, f.getName() );
+        anomalies.add( a );
+      }
     }
+
+    handleAnomalies( anomalies );
+
   }
 
-  private class FitsFileFilter implements FileFilter {
+  private class FitsFileFilter implements FilenameFilter {
 
-    public boolean accept( File f ) {
-      return f.getName().endsWith( "fits.xml" );
+    public boolean accept( File dir, String name ) {
+      return name.endsWith( "fits.xml" );
     }
 
   }
