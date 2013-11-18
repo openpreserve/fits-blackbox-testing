@@ -55,7 +55,11 @@ public class MissingToolOutputRule {
 
   private void handleNode( Node node ) {
     if (node != null) {
+      if (node.getNodeName().equals( "externalIdentifier" )) {
+        return;
+      }
       NamedNodeMap attributes = node.getAttributes();
+
       if (attributes != null) {
         Node toolname = attributes.getNamedItem( "toolname" );
         if (toolname != null) {

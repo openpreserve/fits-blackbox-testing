@@ -1,10 +1,14 @@
 package edu.harvard.hul.fbt;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.commons.io.FileUtils;
 
 public class LogWriter {
 
@@ -60,8 +64,19 @@ public class LogWriter {
     }
 
     newLine( buffer, "" );
-    System.out.println( buffer.toString() );
+    //System.out.println( buffer.toString() );
+    write(buffer);
     mAggregatedLogs.clear();
+  }
+  
+  private void write(StringBuffer buffer) {
+    File logFile = new File(System.getProperty( "java.io.tmpdir" ) + File.separator + "/bbt-logs/log.txt");
+    System.out.println("Writing logs to: " + logFile.getAbsolutePath());
+    try {
+      FileUtils.writeStringToFile(logFile, buffer.toString(), true);
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
   }
 
   private void newLine( StringBuffer buffer, String line ) {

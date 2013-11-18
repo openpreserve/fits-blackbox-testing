@@ -24,7 +24,7 @@ public class App {
       exitCode = ControllerState.SYSTEM_ERROR;
 
     } finally {
-      System.out.println( String.format( "exitCode %d", exitCode ) );
+      //System.out.println( String.format( "exitCode %d", exitCode ) );
       System.exit( exitCode );
     }
   }
