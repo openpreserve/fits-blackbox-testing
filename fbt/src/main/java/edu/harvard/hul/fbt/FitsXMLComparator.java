@@ -1,67 +1,85 @@
 package edu.harvard.hul.fbt;
 
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-import org.custommonkey.xmlunit.DetailedDiff;
-import org.custommonkey.xmlunit.Diff;
-import org.custommonkey.xmlunit.Difference;
-import org.custommonkey.xmlunit.ElementNameAndAttributeQualifier;
-import org.custommonkey.xmlunit.XMLUnit;
-import org.xml.sax.SAXException;
+import org.dom4j.Document;
+import org.dom4j.DocumentException;
+import org.dom4j.DocumentHelper;
+import org.dom4j.Element;
+import org.dom4j.Node;
 
 public class FitsXMLComparator {
 
-  public FitsXMLComparator() {
-    XMLUnit.setCompareUnmatched( false );
-    XMLUnit.setIgnoreAttributeOrder( true );
-    XMLUnit.setIgnoreComments( true );
-    XMLUnit.setIgnoreWhitespace( true );
-    XMLUnit.setIgnoreDiffBetweenTextAndCDATA( true );
+  private Map<String, DiffResolver> mResolvers;
 
+  public FitsXMLComparator() {
+    mResolvers = new HashMap<String, DiffResolver>();
+    mResolvers.put( "identification", new IdentificationResolver() );
   }
 
-  public List<Anomaly> compare( String fileName, String source, String candidate ) {
-    DetailedDiff myDiff;
-    List<Anomaly> anomalies = new ArrayList<Anomaly>();
+  public void compareWithDom4J( String fileName, String source, String candidate ) {
     try {
-      myDiff = new DetailedDiff( new Diff( source, candidate ) );
-      myDiff.overrideElementQualifier( new ElementNameAndAttributeQualifier( "toolname" ) );
+      Document sDoc = DocumentHelper.parseText( source );
+      Document cDoc = DocumentHelper.parseText( candidate );
 
-      List<Difference> allDifferences = myDiff.getAllDifferences();
+      treeWalk( sDoc, new NodeFoundCallback( fileName, cDoc ) );
 
-      // TODO create MissingToolRule and invoke it here.
-      // pass the differences and look for a
-      // "Expected presence of child node 'xyz' but was 'null'"
-      // this indicates that some node was missing. Inspect the missing node
-      // closely and deduce whether it is a missing tool or not.
+    } catch (DocumentException e) {
+      e.printStackTrace();
+    }
+  }
 
-      // TODO figure out a way to pass the results back to the controller?
-      // Callback vs Return Type?
+  public List<Report> getComparisonSummary() {
+    List<Report> reports = new ArrayList<Report>();
+    for (String k : mResolvers.keySet()) {
+      DiffResolver resolver = mResolvers.get( k );
+      reports.addAll( resolver.report() );
+    }
 
-      MissingToolOutputRule rule = new MissingToolOutputRule();
-      rule.checkDifferences( allDifferences );
+    return reports;
+  }
 
-      if (rule.hasMissing()) {
+  private void treeWalk( Document document, NodeFoundCallback callback ) {
+    Element element = document.getRootElement();
+    List<Element> elements = element.elements();
+    for (Element e : elements) {
+      callback.callback( e );
+    }
+  }
 
-        for (String tool : rule.getMissingTools()) {
-          Anomaly a = new Anomaly( Anomaly.MISSING_TOOL, fileName );
-          a.setData( tool );
-          anomalies.add( a );
+  private class NodeFoundCallback {
 
+    private String mFileName;
+
+    private Document mCanditate;
+
+    public NodeFoundCallback( String fileName, Document candidate ) {
+      mFileName = fileName;
+      mCanditate = candidate;
+    }
+
+    public void callback( Element node ) {
+      String nodeName = node.getName();
+      if (nodeName != null) {
+        DiffResolver diffResolver = mResolvers.get( nodeName );
+        if (diffResolver != null) {
+          Element candidate = findCandidate( node );
+          diffResolver.resolve( mFileName, node, candidate );
         }
 
       }
-
-    } catch (SAXException e) {
-      e.printStackTrace();
-    } catch (IOException e) {
-      e.printStackTrace();
     }
 
-    return anomalies;
+    private Element findCandidate( Element source ) {
+      String xPath = source.getPath();
+      Node candidateNode = mCanditate.selectSingleNode( xPath );
+      // System.out.println( "CANDIDATE" );
+      // System.out.println( candidateNode.asXML() );
+      return (Element) candidateNode;
+    }
   }
+
 }
