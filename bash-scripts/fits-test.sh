@@ -46,6 +46,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 paramFitsToolLoc=
 paramCorporaLoc=
 resetHead=0
+currentBranch=
 ##
 # Functions defined first, control flow at the bottom of script
 ##
@@ -133,7 +134,7 @@ findMergeBaseHash() {
 # Checkout a particular revision on the current branch by hash
 checkoutRevision() {
 	echo "Checking out revision $1"
-	gitcheckout=$(git checkout $1 .)
+	gitcheckout=$(git checkout $1) # removing '.' (current directory). Otherwise the changed files are kept and screw up the build
 	coOkRegEx="^Checking out revision $1"
 	echo "$gitcheckout"
 }
@@ -194,14 +195,24 @@ resetHead() {
 	fi
 }
 
+# Checks out the starting branch if the the parameter is set.
+checkoutCurrentBranch() {
+  if [ "x$currentBranch" != "x" ] 
+  then
+    echo "Current Branch is: $currentBranch"
+    checkoutRevision "$currentBranch"
+  fi
+}
+
 
 testHeadAgainstMergeBase() {
- 	java  -jar "$paramFitsToolLoc" 	".output/$mergebasehash" ".output/$githeadhash" "$githeadhash"
+ 	java  -jar "$paramFitsToolLoc" -s ".output/$mergebasehash" -c ".output/$githeadhash" -k "$githeadhash"
  	case "$?" in
  		# Test passed so no need to look for broken revision
  		"0" )
  		echo "Test of HEAD against branch base succeeded, no broken revision to find."
- 		resetHead
+ 		resetHead   
+    checkoutCurrentBranch; 
  		exit 0;
  		;;
  		# Test of dev branch HEAD against master couldn't be performed
@@ -209,6 +220,7 @@ testHeadAgainstMergeBase() {
  		"125" )
  		echo "Test of HEAD against branch base could not be performed"
  		resetHead
+    checkoutCurrentBranch
  		exit 1;
  		;;
  		# Test failed, exit for now but the start for the
@@ -216,6 +228,7 @@ testHeadAgainstMergeBase() {
  		* )
  		echo "Test of HEAD against branch base failed"
  		resetHead
+    checkoutCurrentBranch;
  		exit 1;
  	esac
 }
@@ -242,8 +255,11 @@ buildFits;
 findRelease;
 # Execute FITS sending output to hash named output dir
 executeFits "$githeadhash";
+
 # Set reset HEAD flag, we're about to check out changes
 resetHead=1
+resetHead;
+checkoutCurrentBranch;
 # Checkout master branch base
 checkoutRevision "$mergebasehash"
 # Build master revision for comparison
@@ -256,3 +272,4 @@ testHeadAgainstMergeBase;
 
 # Reset repo to head
 resetHead;
+checkoutCurrentBranch;
