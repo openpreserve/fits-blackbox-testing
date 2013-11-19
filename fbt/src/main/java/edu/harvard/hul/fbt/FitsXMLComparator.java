@@ -18,6 +18,7 @@ public class FitsXMLComparator {
   public FitsXMLComparator() {
     mResolvers = new HashMap<String, DiffResolver>();
     mResolvers.put( "identification", new IdentificationResolver() );
+    mResolvers.put( "fileinfo", new FileInfoResolver() );
   }
 
   public void compareWithDom4J( String fileName, String source, String candidate ) {
@@ -33,13 +34,18 @@ public class FitsXMLComparator {
   }
 
   public List<Report> getComparisonSummary() {
-    List<Report> reports = new ArrayList<Report>();
+    DiffResolver tmp = new DiffResolver() {
+      @Override
+      public void resolve( String fileName, Element source, Element candidate ) {
+      }
+    };
+
     for (String k : mResolvers.keySet()) {
       DiffResolver resolver = mResolvers.get( k );
-      reports.addAll( resolver.report() );
+      tmp.merge( resolver );
     }
 
-    return reports;
+    return tmp.report();
   }
 
   private void treeWalk( Document document, NodeFoundCallback callback ) {
