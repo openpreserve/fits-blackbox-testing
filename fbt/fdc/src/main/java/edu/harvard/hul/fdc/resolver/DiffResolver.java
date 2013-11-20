@@ -1,4 +1,4 @@
-package edu.harvard.hul.fdc;
+package edu.harvard.hul.fdc.resolver;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -9,9 +9,12 @@ import java.util.Set;
 
 import org.dom4j.Element;
 
+import edu.harvard.hul.fdc.ControllerState;
+import edu.harvard.hul.fdc.Report;
+
 public abstract class DiffResolver {
 
-  protected String mCurrentKey;
+  private String mCurrentKey;
 
   protected Map<String, Set<String>> mUpdatedTools;
 
@@ -28,7 +31,12 @@ public abstract class DiffResolver {
     mGlobalMisses = new HashMap<String, ToolGlobalMissingCounter>();
   }
 
-  public abstract void resolve( String fileName, Element source, Element candidate );
+  protected abstract void resolve(Element source, Element candidate);
+  
+  public void resolve( String fileName, Element source, Element candidate ) {
+    mCurrentKey = fileName;
+    resolve( source, candidate );
+  }
 
   public void merge( DiffResolver resolver ) {
     mergeToolsMap( mUpdatedTools, resolver.mUpdatedTools );
@@ -179,6 +187,10 @@ public abstract class DiffResolver {
 
     public void incrementCandidateMiss(int inc) {
       mCandidateMiss += inc;
+    }
+    
+    public String getTool() {
+      return mTool;
     }
   }
 }

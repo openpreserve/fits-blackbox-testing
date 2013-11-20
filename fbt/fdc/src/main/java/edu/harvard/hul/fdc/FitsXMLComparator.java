@@ -1,6 +1,5 @@
 package edu.harvard.hul.fdc;
 
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -10,6 +9,10 @@ import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.dom4j.Node;
+
+import edu.harvard.hul.fdc.resolver.DiffResolver;
+import edu.harvard.hul.fdc.resolver.FileInfoResolver;
+import edu.harvard.hul.fdc.resolver.IdentificationResolver;
 
 public class FitsXMLComparator {
 
@@ -36,7 +39,7 @@ public class FitsXMLComparator {
   public List<Report> getComparisonSummary() {
     DiffResolver tmp = new DiffResolver() {
       @Override
-      public void resolve( String fileName, Element source, Element candidate ) {
+      public void resolve( Element source, Element candidate ) {
       }
     };
 

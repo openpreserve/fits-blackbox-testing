@@ -1,4 +1,4 @@
-package edu.harvard.hul.fdc;
+package edu.harvard.hul.fdc.resolver;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -11,8 +11,7 @@ import org.dom4j.Element;
 public class IdentificationResolver extends DiffResolver {
 
   @Override
-  public void resolve( String fileName, Element source, Element candidate ) {
-    mCurrentKey = fileName;
+  public void resolve( Element source, Element candidate ) {
     List<Element> sIdentities = source.elements( "identity" );
     List<Element> cIdentities = candidate.elements();
 

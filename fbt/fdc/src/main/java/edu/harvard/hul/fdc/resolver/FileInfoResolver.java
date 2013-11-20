@@ -1,4 +1,4 @@
-package edu.harvard.hul.fdc;
+package edu.harvard.hul.fdc.resolver;
 
 import java.util.List;
 
@@ -7,8 +7,7 @@ import org.dom4j.Element;
 public class FileInfoResolver extends DiffResolver {
 
   @Override
-  public void resolve( String fileName, Element source, Element candidate ) {
-    mCurrentKey = fileName;
+  public void resolve( Element source, Element candidate ) {
     List<Element> sources = source.elements();
     List<Element> candidates = candidate.elements();
 
@@ -29,9 +28,9 @@ public class FileInfoResolver extends DiffResolver {
       }
 
       if (!found) {
-        
+
         missingTool( sTool );
-        
+
       } else {
         ToolGlobalMissingCounter counter = getCounter( sTool );
         counter.incrementSourceOccurs( 1 );
