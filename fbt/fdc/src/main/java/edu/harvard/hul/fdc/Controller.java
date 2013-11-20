@@ -1,4 +1,4 @@
-package edu.harvard.hul.fbt;
+package edu.harvard.hul.fdc;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -13,7 +13,7 @@ import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.ParseException;
 import org.apache.commons.io.IOUtils;
 
-import edu.harvard.hul.fbt.cli.CLI;
+import edu.harvard.hul.fdc.cli.CLI;
 
 public class Controller {
 

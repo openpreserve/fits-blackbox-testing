@@ -1,6 +1,6 @@
-package edu.harvard.hul.fbt;
+package edu.harvard.hul.fdc;
 
-import edu.harvard.hul.fbt.cli.CLI;
+import edu.harvard.hul.fdc.cli.CLI;
 
 public class App {
   public static void main( String[] args ) {

@@ -4,11 +4,15 @@
 
 	<groupId>edu.harvard.hul</groupId>
 	<artifactId>fbt</artifactId>
-	<version>0.0.1-SNAPSHOT</version>
-	<packaging>jar</packaging>
+	<version>0.0.1</version>
+	<packaging>pom</packaging>
 
-	<name>fbt</name>
-	<url>http://maven.apache.org</url>
+	<name>Fits Blackbox Testing Suite</name>
+	<url>https://github.com/openplanets/fits-blackbox-testing</url>
+
+	<modules>
+		<module>fdc</module>
+	</modules>
 
 	<developers>
 		<developer>
@@ -42,28 +46,6 @@
 					<target>${java_version}</target>
 				</configuration>
 			</plugin>
-			<plugin>
-				<artifactId>maven-assembly-plugin</artifactId>
-				<configuration>
-					<archive>
-						<manifest>
-							<mainClass>edu.harvard.hul.fbt.App</mainClass>
-						</manifest>
-					</archive>
-					<descriptorRefs>
-						<descriptorRef>jar-with-dependencies</descriptorRef>
-					</descriptorRefs>
-				</configuration>
-				<executions>
-					<execution>
-						<id>make-assembly</id>
-						<phase>package</phase>
-						<goals>
-							<goal>single</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
 		</plugins>
 	</build>
 
@@ -73,26 +55,6 @@
 			<artifactId>junit</artifactId>
 			<version>4.8.1</version>
 			<scope>test</scope>
-		</dependency>
-		<dependency>
-			<groupId>commons-cli</groupId>
-			<artifactId>commons-cli</artifactId>
-			<version>1.2</version>
-		</dependency>
-		<dependency>
-			<groupId>commons-io</groupId>
-			<artifactId>commons-io</artifactId>
-			<version>2.4</version>
-		</dependency>
-		<dependency>
-			<groupId>dom4j</groupId>
-			<artifactId>dom4j</artifactId>
-			<version>1.6.1</version>
-		</dependency>
-		<dependency>
-			<groupId>jaxen</groupId>
-			<artifactId>jaxen</artifactId>
-			<version>1.1.4</version>
 		</dependency>
 	</dependencies>
 </project>
