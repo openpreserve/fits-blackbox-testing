@@ -13,6 +13,7 @@ import org.dom4j.Node;
 import edu.harvard.hul.fdc.resolver.DiffResolver;
 import edu.harvard.hul.fdc.resolver.FileInfoResolver;
 import edu.harvard.hul.fdc.resolver.IdentificationResolver;
+import edu.harvard.hul.fdc.resolver.MetadataResolver;
 
 public class FitsXMLComparator {
 
@@ -22,6 +23,7 @@ public class FitsXMLComparator {
     mResolvers = new HashMap<String, DiffResolver>();
     mResolvers.put( "identification", new IdentificationResolver() );
     mResolvers.put( "fileinfo", new FileInfoResolver() );
+    mResolvers.put( "metadata", new MetadataResolver() );
   }
 
   public void compareWithDom4J( String fileName, String source, String candidate ) {

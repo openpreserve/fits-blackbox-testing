@@ -14,7 +14,7 @@ import edu.harvard.hul.fdc.Report;
 
 public abstract class DiffResolver {
 
-  private String mCurrentKey;
+  protected String mCurrentKey;
 
   protected Map<String, Set<String>> mUpdatedTools;
 
@@ -22,17 +22,20 @@ public abstract class DiffResolver {
 
   protected Map<String, Set<String>> mMissingTools;
 
+  protected Map<String, Set<String>> mMismatchValues;
+
   protected Map<String, ToolGlobalMissingCounter> mGlobalMisses;
 
   public DiffResolver() {
     mUpdatedTools = new HashMap<String, Set<String>>();
     mNewTools = new HashMap<String, Set<String>>();
     mMissingTools = new HashMap<String, Set<String>>();
+    mMismatchValues = new HashMap<String, Set<String>>();
     mGlobalMisses = new HashMap<String, ToolGlobalMissingCounter>();
   }
 
-  protected abstract void resolve(Element source, Element candidate);
-  
+  protected abstract void resolve( Element source, Element candidate );
+
   public void resolve( String fileName, Element source, Element candidate ) {
     mCurrentKey = fileName;
     resolve( source, candidate );
@@ -42,16 +45,17 @@ public abstract class DiffResolver {
     mergeToolsMap( mUpdatedTools, resolver.mUpdatedTools );
     mergeToolsMap( mNewTools, resolver.mNewTools );
     mergeToolsMap( mMissingTools, resolver.mMissingTools );
-    
+    mergeToolsMap( mMismatchValues, resolver.mMismatchValues );
+
     for (String k : resolver.mGlobalMisses.keySet()) {
       ToolGlobalMissingCounter counter = mGlobalMisses.get( k );
       if (counter != null) {
-        counter.incrementSourceOccurs( resolver.mGlobalMisses.get( k ).getSourceOccurs());
-        counter.incrementCandidateMiss( resolver.mGlobalMisses.get( k ).getCandidateMiss());
+        counter.incrementSourceOccurs( resolver.mGlobalMisses.get( k ).getSourceOccurs() );
+        counter.incrementCandidateMiss( resolver.mGlobalMisses.get( k ).getCandidateMiss() );
       } else {
         counter = resolver.mGlobalMisses.get( k );
       }
-      
+
       mGlobalMisses.put( k, counter );
     }
   }
@@ -82,6 +86,13 @@ public abstract class DiffResolver {
         mMissingTools );
     addReport( reports, report );
 
+    report = generateReport( String.format( "Found %s tool(s) providing mismatching values:\n", mMismatchValues.keySet().size() ),
+        mMismatchValues );
+    if (mMismatchValues.keySet().size() > 0) {
+      report.setStatus( ControllerState.TOOL_VALUE_MISMATCH );
+    }
+    addReport( reports, report );
+
     if (mGlobalMisses.keySet().size() > 0) {
       report = new Report();
       int global = 0;
@@ -95,9 +106,11 @@ public abstract class DiffResolver {
         }
       }
 
-      log = String.format( log, global );
-      report.setLog( log );
-      addReport( reports, report );
+      if (global > 0) {
+        log = String.format( log, global );
+        report.setLog( log );
+        addReport( reports, report );
+      }
     }
 
     return reports;
@@ -131,8 +144,8 @@ public abstract class DiffResolver {
   protected void missingTool( String tool ) {
     handleTool( tool, mMissingTools );
     ToolGlobalMissingCounter counter = getCounter( tool );
-    counter.incrementSourceOccurs(1);
-    counter.incrementCandidateMiss(1);
+    counter.incrementSourceOccurs( 1 );
+    counter.incrementCandidateMiss( 1 );
   }
 
   protected void handleTool( String tool, Map<String, Set<String>> toolsSet ) {
@@ -181,14 +194,14 @@ public abstract class DiffResolver {
       return mCandidateMiss;
     }
 
-    public void incrementSourceOccurs(int inc) {
+    public void incrementSourceOccurs( int inc ) {
       mSourceOcurrs += inc;
     }
 
-    public void incrementCandidateMiss(int inc) {
+    public void incrementCandidateMiss( int inc ) {
       mCandidateMiss += inc;
     }
-    
+
     public String getTool() {
       return mTool;
     }

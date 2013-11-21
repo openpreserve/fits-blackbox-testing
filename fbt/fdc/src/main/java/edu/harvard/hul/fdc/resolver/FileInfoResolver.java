@@ -5,7 +5,7 @@ import java.util.List;
 import org.dom4j.Element;
 
 public class FileInfoResolver extends DiffResolver {
-
+  
   @Override
   public void resolve( Element source, Element candidate ) {
     List<Element> sources = source.elements();
@@ -22,7 +22,11 @@ public class FileInfoResolver extends DiffResolver {
         if (sNodeName.equals( cNodeName ) && sTool.equals( cTool )) {
           found = true;
           // found: compare values
-
+          
+          if (!s.getText().equals( c.getText() )) {
+            handleTool( sTool, mMismatchValues );
+          }
+          
           break;
         }
       }
