@@ -25,6 +25,8 @@ public class ControllerState {
   public static final int CONFLICT_INTRODUCTION = 10;
 
   public static final int MULTIPLE_PROBLEMS = 42;
+  
+  public static final int TEST_NOT_EXECUTABLE = 125;
 
   private int mState = OK;
 
@@ -33,7 +35,7 @@ public class ControllerState {
   public ControllerState() {
     mStates = new int[] { OK, SYSTEM_ERROR, FILE_MISSING_SOURCE, FILE_MISSING_CANDIDATE, FILE_INVALID_OUTPUT_SOURCE,
         FILE_INVALID_OUTPUT_CANDIDATE, TOOL_MISSING_OUTPUT, TOOL_VERSION_MISMATCH, TOOL_VALUE_MISMATCH,
-        CONFLICT_RESOLUTION, CONFLICT_INTRODUCTION, MULTIPLE_PROBLEMS };
+        CONFLICT_RESOLUTION, CONFLICT_INTRODUCTION, MULTIPLE_PROBLEMS, TEST_NOT_EXECUTABLE };
   }
 
   public void assignState(int state) {

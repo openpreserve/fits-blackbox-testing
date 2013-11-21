@@ -87,12 +87,9 @@ public class Controller {
     File[] sourceFiles = sourceFolder.listFiles( new FitsFileFilter() );
     File[] candidateFiles = candidateFolder.listFiles( new FitsFileFilter() );
 
-    if (sourceFiles == null || sourceFiles.length == 0) {
+    if (sourceFiles == null || sourceFiles.length == 0 || candidateFiles == null || candidateFiles.length == 0) {
       valid = false;
-      handleState( ControllerState.FILE_MISSING_SOURCE );
-    } else if (candidateFiles == null || candidateFiles.length == 0) {
-      valid = false;
-      handleState( ControllerState.FILE_MISSING_CANDIDATE );
+      handleState( ControllerState.TEST_NOT_EXECUTABLE );
     }
 
     return valid;
