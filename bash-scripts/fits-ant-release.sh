@@ -19,7 +19,7 @@
 ##
 
 ANT_SUCCESSFUL="SUCCESSFUL"
-RELEASE_DIR=".release"
+RELEASE_DIR=".bb-testing/release"
 buildDir="."
 # Check the passed params to avoid disapointment
 checkParams () {

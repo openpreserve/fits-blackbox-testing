@@ -10,7 +10,7 @@
 # to a FITS testing tool and a path to test corpora the script:
 #
 #	* Checks that there's no uncommitted code.
-#   * Checks that there you're not on master.
+#   * Checks that you're not on master.
 #	* Builds the current branch and generates test output.
 #   * Checks out the master commit that's the source of this branch.
 #	* Builds FITS and generates the more test output.
@@ -47,6 +47,9 @@ paramFitsToolLoc=
 paramCorporaLoc=
 resetHead=0
 currentBranch=
+globalOutput=".bb-testing"
+fitsOutputDir="$globalOutput/output"
+fitsReleaseDir="$globalOutput/release"
 ##
 # Functions defined first, control flow at the bottom of script
 ##
@@ -78,6 +81,15 @@ checkParams () {
 	fi
 }
 
+# Checks if there is a .bb-testing dir in the current working dir.
+# if there is one, it is removed, so that a fresh test can be executed.
+wipeOutOldData() {
+	if  [[ -d "$globalOutput" ]]
+	then
+		echo "Old test output data found, removing...: $globalOutput"
+    rm -r "$globalOutput/"
+	fi
+}
 
 # Check we've got a master branch and it's not checked out,
 # intended to be run on a development branch
@@ -161,7 +173,7 @@ buildFits() {
 
 # Find the unzipped release directory
 findRelease() {
-	releaseDir=$(find .release -name "fits-*" -type d 2>&1)
+	releaseDir=$(find $fitsReleaseDir -name "fits-*" -type d 2>&1)
 	if [[ ! -d "$releaseDir" ]]
 	then
 		echo "FITS release NOT found."
@@ -173,7 +185,7 @@ findRelease() {
 
 # Setup output directory and execute FITS
 executeFits() {
-	outputDir="./.output/$1"
+	outputDir="$fitsOutputDir/$1"
 	if [[ -d "$outputDir" ]]
 	then
 		rm -rf "$outputDir"
@@ -206,7 +218,7 @@ checkoutCurrentBranch() {
 
 
 testHeadAgainstMergeBase() {
- 	java  -jar "$paramFitsToolLoc" -s ".output/$mergebasehash" -c ".output/$githeadhash" -k "$githeadhash"
+ 	java  -jar "$paramFitsToolLoc" -s "$fitsOutputDir/$mergebasehash" -c "$fitsOutputDir/$githeadhash" -k "$githeadhash"
  	case "$?" in
  		# Test passed so no need to look for broken revision
  		"0" )
@@ -239,6 +251,8 @@ testHeadAgainstMergeBase() {
 
 # Check and setup parameters
 checkParams "$@";
+# Look for a .bb-testing directory and remove it
+wipeOutOldData;
 # We're in a git repo with no uncommitted changes?
 checkGitStatus;
 echo "In git repo ${PWD##*/}"

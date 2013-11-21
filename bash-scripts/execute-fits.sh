@@ -27,8 +27,8 @@
 
 FITS_SHELL="fits.sh"
 
-outputDir=".output"
-fitsDir=".release"
+outputDir=".bb-testing/output"
+fitsDir=".bb-testing/release"
 corporaDir=".corpora"
 # Check the passed params to avoid disappointment
 checkParams () {
