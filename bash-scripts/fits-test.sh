@@ -185,16 +185,18 @@ findRelease() {
 
 # Setup output directory and execute FITS
 executeFits() {
-	outputDir="$fitsOutputDir/$1"
+  githash=$1
+	outputDir="$fitsOutputDir/$githash"
 	if [[ -d "$outputDir" ]]
 	then
 		rm -rf "$outputDir"
 	fi
 	mkdir -p "$outputDir"
-	bash "$SCRIPT_DIR/execute-fits.sh" "$paramCorporaLoc" "$outputDir" "$releaseDir"
+	bash "$SCRIPT_DIR/execute-fits.sh" "$paramCorporaLoc" "$outputDir" "$releaseDir" "$githash"
 	if (( $? != 0))
 	then
-		resetHead
+		resetHead;
+    checkoutCurrentBranch;
 		exit $?;
 	fi
 }

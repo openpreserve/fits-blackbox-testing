@@ -29,6 +29,7 @@ FITS_SHELL="fits.sh"
 
 outputDir=".bb-testing/output"
 fitsDir=".bb-testing/release"
+fitsLogOutputDir=".bb-testing/log"
 corporaDir=".corpora"
 # Check the passed params to avoid disappointment
 checkParams () {
@@ -67,6 +68,18 @@ checkParams () {
 		echo "FITS release directory not found: $3"
 		exit 1;
 	fi
+  
+  if [[ "$#" -gt 3 ]]
+  then
+    gitHash="$4"
+    fitsLogOutputDir="$fitsLogOutputDir/$gitHash"
+  fi
+  
+  if [[ "x$gitHash" == "x" ]]
+  then
+    echo "Git commit cannot be empty"
+    exit 1;
+  fi
 
 }
 
@@ -84,9 +97,18 @@ checkFitsVersion() {
 executeFits() {
 	echo "Running FITS v. $fitsver ...."
 	fitsout=$($fitsDir/$FITS_SHELL -i $corporaDir -o $outputDir -r 2>&1)
+  echo $fitsout >> "$fitsLogOutputDir/fits_output.log"
 	echo "Finished."
+}
+
+createLogDir() {
+  if [[ ! -d "$fitsLogOutputDir" ]]
+  then
+    mkdir -p $fitsLogOutputDir
+  fi
 }
 
 checkParams "$@";
 checkFitsVersion;
+createLogDir;
 executeFits;
