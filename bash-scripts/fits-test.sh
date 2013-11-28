@@ -94,10 +94,17 @@ checkParams () {
 
 # Show usage message
 showHelp() {
-	echo "usage: fits-test [-t <pathToTestTool>] [-c <pathToCorpora>] [-h|?]"
+	echo "usage: fits-test [-t <path>] [-c <path>] [-h|?]"
 	echo ""
-	echo "  pathToTestTool : The full path to the FITS testing tool."
-	echo "  pathToCorpora  : The path to the root directory of the test corpora."
+	echo "Should be run from a FITS git repository, from a checked out development branch."
+	echo "The script runs a test tool against the development HEAD, then repeats against the branch BASE, i.e. the base commit of the branch."
+	echo "If the tests fail for the current HEAD and the -b flag is set git-bisect is used to find the broken commit."
+	echo ""
+	echo "Options:"
+	echo "	-t <path>	use the FITS testing tool at <path>, REQUIRED."
+	echo "  -c <path>	run tests on corpora at directory <path>, REQUIRED."
+	echo "  -b			invoke git-bisect if test against merge base fails."
+	echo "  -h | ?		show this message."
 }
 
 # Checks if there is a .bb-testing dir in the current working dir.
