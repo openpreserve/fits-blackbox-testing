@@ -45,6 +45,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 # Globals to hold the checked param vals
 paramFitsToolLoc=""
 paramCorporaLoc=""
+paramGitBisect=0
 resetHead=0
 currentBranch=
 globalOutput=".bb-testing"
@@ -58,11 +59,14 @@ fitsReleaseDir="$globalOutput/release"
 checkParams () {
 	OPTIND=1	# Reset in case getopts previously used
 
-	while getopts "h?t:c:" opt; do	# Grab the options
+	while getopts "h?b?t:c:" opt; do	# Grab the options
 		case "$opt" in
 		h|\?)
 			showHelp
 			exit 0
+			;;
+		b)	paramGitBisect=1
+			echo "BISECT Requested."
 			;;
 		t)	paramFitsToolLoc=$OPTARG
 			;;
@@ -101,10 +105,10 @@ showHelp() {
 	echo "If the tests fail for the current HEAD and the -b flag is set git-bisect is used to find the broken commit."
 	echo ""
 	echo "Options:"
-	echo "	-t <path>	use the FITS testing tool at <path>, REQUIRED."
-	echo "  -c <path>	run tests on corpora at directory <path>, REQUIRED."
-	echo "  -b			invoke git-bisect if test against merge base fails."
-	echo "  -h | ?		show this message."
+	echo "  -t <path>  use the FITS testing tool at <path>, REQUIRED."
+	echo "  -c <path>  run tests on corpora at directory <path>, REQUIRED."
+	echo "  -b         invoke git-bisect if test against merge base fails."
+	echo "  -h | ?     show this message."
 }
 
 # Checks if there is a .bb-testing dir in the current working dir.
