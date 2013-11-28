@@ -5,63 +5,63 @@
 #
 # author Carl Wilson carl@openplanetsfoundation.org
 #
-# This script checks a directory to ensure that:
-#
-#  * The directory is a git repo
-#  * The repo has no uncommitted changes
-#  * That a master branch exists
-#  * That a branch other than master is checked out
-#
-# Script can takes 3 parameters:
-#
-#  $1 path to test corpora release
-#     defaults ./.corpora
-#
-#  $2 path to output directory
-#     defaults ./.output
-#
-#  $3 path to FITS release
-#     defaults ./.release
+# usage: execute-fits [-f <path>] [-c <path>] [-a <path>]
+# Options:
+#  -f <path>  path to FITS tool, defaults to ./.bb-testing/release/ .
+#  -c <path>  path to test corpora to invoke FITS upon, defaults to ./.corpora/ .
+#  -a <path>  path to root of all output, defaults to ./bb-testing/ .
 #  
 ##
 
 FITS_SHELL="fits.sh"
 
-outputDir=".bb-testing/output"
-fitsDir=".bb-testing/release"
-fitsLogOutputDir=".bb-testing/log"
+globalOutput=".bb-testing"
+fitsDir="ls $globalOutput/release"
+fitsOutputDir="output"
+fitsLogDir="log"
 corporaDir=".corpora"
 # Check the passed params to avoid disappointment
 checkParams () {
-	# If we have at least 1 param
-	if [[ "$#" -gt 0 ]]
-	then
-		corporaDir="$1"
-	fi
+	OPTIND=1	# Reset in case getopts previously used
+
+	while getopts "f:c:a:" opt; do	# Grab the options
+		case "$opt" in
+		f)	fitsDir=$OPTARG
+			;;
+		c)	corporaDir=$OPTARG
+			;;
+		a)	globalOutput=$OPTARG
+			;;
+		esac
+	done
+	shift $((OPTIND-1))
+	
+
+	[ "$1" = "--" ] && shift
+    gitHash=$(git rev-parse HEAD 2>&1)
+
 	# Check that the corpora directory exists
 	if  [[ ! -d "$corporaDir" ]]
 	then
 		echo "Corpora directory not found: $1"
 		exit 1;
 	fi
-	
-	# If we have at least 2 params
-	if [[ "$#" -gt 1 ]]
+
+	# Check that the global output directory exists
+	if  [[ ! -d "$globalOutput" ]]
 	then
-		outputDir="$2"
+		echo "Global output directory not found: $1"
+		exit 1;
 	fi
+	
 	# Check that the output dir exists
-	if  [[ ! -d "$outputDir" ]]
+	fitsOutputDir="$globalOutput/$fitsOutputDir/$gitHash"
+	if  [[ ! -d "$fitsOutputDir" ]]
 	then
 		echo "Output directory not found: $2"
 		exit 1;
 	fi
 
-	# If we have at least 3 params
-	if [[ "$#" -gt 2 ]]
-	then
-		fitsDir="$3"
-	fi
 	# Check that the FITS release exists
 	if  [[ ! -d "$fitsDir" ]]
 	then
@@ -69,18 +69,12 @@ checkParams () {
 		exit 1;
 	fi
   
-  if [[ "$#" -gt 3 ]]
-  then
-    gitHash="$4"
-    fitsLogOutputDir="$fitsLogOutputDir/$gitHash"
-  fi
-  
-  if [[ "x$gitHash" == "x" ]]
-  then
-    echo "Git commit cannot be empty"
-    exit 1;
-  fi
-
+    fitsLogDir="$globalOutput/$fitsLogDir/$gitHash"
+	if [[ "x$gitHash" == "x" ]]
+	then
+    	echo "Git commit cannot be empty"
+    	exit 1;
+	fi
 }
 
 checkFitsVersion() {
@@ -96,15 +90,15 @@ checkFitsVersion() {
 
 executeFits() {
 	echo "Running FITS v. $fitsver ...."
-	fitsout=$($fitsDir/$FITS_SHELL -i $corporaDir -o $outputDir -r 2>&1)
-  echo $fitsout >> "$fitsLogOutputDir/fits_output.log"
+	fitsout=$($fitsDir/$FITS_SHELL -i $corporaDir -o $fitsOutputDir -r 2>&1)
+  echo $fitsout >> "$fitsLogDir/fits_output.log"
 	echo "Finished."
 }
 
 createLogDir() {
-  if [[ ! -d "$fitsLogOutputDir" ]]
+  if [[ ! -d "$fitsLogDir" ]]
   then
-    mkdir -p $fitsLogOutputDir
+    mkdir -p $fitsLogDir
   fi
 }
 
