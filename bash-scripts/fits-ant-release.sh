@@ -12,28 +12,51 @@
 #  * ant compile
 #  * ant release
 #
-# Script can takes 1 parameter:
+# Usage fits-ant-release [-b <path>] [-r <path>] [-h | -?]
+# Options:
+#  -b <path>  Path to build dir defaults to current dir.
+#  -r <path>  Path to release dir, defaults to .bb-testing/release.
 #
-#  $1 directory for FITS project
-#     defaults to current directory
 ##
 
 ANT_SUCCESSFUL="SUCCESSFUL"
-RELEASE_DIR=".bb-testing/release"
+releaseDir=".bb-testing/release"
 buildDir="."
 # Check the passed params to avoid disapointment
 checkParams () {
-	# If we have params
-	if [[ "$#" -gt 0 ]]
+	OPTIND=1	# Reset in case getopts previously used
+
+	while getopts "h?b:r:" opt; do	# Grab the options
+		case "$opt" in
+		h|\?)
+			showHelp
+			exit 0
+			;;
+		b)	buildDir=$OPTARG
+			;;
+		r)	releaseDir=$OPTARG
+			;;
+		esac
+	done
+	shift $((OPTIND-1))
+
+	[ "$1" = "--" ] && shift
+	# Check that the buid dir
+	if  [[ ! -e "$buildDir" ]]
 	then
-		# Check that the build directory exists
-		if  [[ ! -d "$1" ]]
-		then
-			echo "Build directory not found: $1"
-			exit 1;
-		fi
-		buildDir="$1"
+		echo "FITS Build directory NOT found : $buildDir"
+		exit 1;
 	fi
+}
+
+# Show usage message
+showHelp() {
+	echo "Usage fits-ant-release [-b <path>] [-r <path>] [-h | -?]"
+	echo ""
+	echo "Options:"
+	echo "  -b <path>  Path to build dir defaults to current dir."
+	echo "  -r <path>  Path to release dir, defaults to .bb-testing/release."
+	echo "  -h | -?    show this message."
 }
 
 # Build the FITS project invoking ant tasks
@@ -48,11 +71,11 @@ buildFits() {
 	testAntCommand "$antCompile"
 	
 	echo "${PWD##*/}: ant release"
-	if [[ -d "$RELEASE_DIR" ]]
+	if [[ -d "$releaseDir" ]]
 	then
-		rm -rf "$RELEASE_DIR"
+		rm -rf "$releaseDir"
 	fi
-	antRelease=$(ant release <<< "$RELEASE_DIR" 2>&1)
+	antRelease=$(ant release <<< "$releaseDir" 2>&1)
 	testAntCommand "$antRelease"
 }
 
@@ -91,7 +114,7 @@ wasAntSuccessful() {
 
 unpackFits() {
 	# Find the FITS release .zip
-	cd $RELEASE_DIR
+	cd $releaseDir
 	findzip=$(find . -name "fits*.zip" -type f 2>&1)
 	if [[ ! -e "$findzip" ]]
 	then
