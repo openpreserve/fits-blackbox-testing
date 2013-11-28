@@ -35,10 +35,8 @@ checkParams () {
 		esac
 	done
 	shift $((OPTIND-1))
-	
 
 	[ "$1" = "--" ] && shift
-    gitHash=$(git rev-parse HEAD 2>&1)
 
 	# Check that the corpora directory exists
 	if  [[ ! -d "$corporaDir" ]]
@@ -54,14 +52,6 @@ checkParams () {
 		exit 1;
 	fi
 	
-	# Check that the output dir exists
-	fitsOutputDir="$globalOutput/$fitsOutputDir/$gitHash"
-	if  [[ ! -d "$fitsOutputDir" ]]
-	then
-		echo "Output directory not found: $2"
-		exit 1;
-	fi
-
 	# Check that the FITS release exists
 	if  [[ ! -d "$fitsDir" ]]
 	then
@@ -69,12 +59,18 @@ checkParams () {
 		exit 1;
 	fi
   
-    fitsLogDir="$globalOutput/$fitsLogDir/$gitHash"
-	if [[ "x$gitHash" == "x" ]]
+	# Get and check the commit hash
+	gitHash=$(git rev-parse HEAD 2>&1)
+	shaRegEx="^[0-9a-f]{40}$"
+	if [[ ! $gitHash =~ $shaRegEx ]]
 	then
-    	echo "Git commit cannot be empty"
-    	exit 1;
+		echo "Cannot determine current commit hash: $gitHash"
+		exit 1;
 	fi
+
+	# Set the output and log directories
+	fitsOutputDir="$globalOutput/$fitsOutputDir/$gitHash"
+    fitsLogDir="$globalOutput/$fitsLogDir/$gitHash"
 }
 
 checkFitsVersion() {
@@ -91,18 +87,24 @@ checkFitsVersion() {
 executeFits() {
 	echo "Running FITS v. $fitsver ...."
 	fitsout=$($fitsDir/$FITS_SHELL -i $corporaDir -o $fitsOutputDir -r 2>&1)
-  echo $fitsout >> "$fitsLogDir/fits_output.log"
+	echo $fitsout >> "$fitsLogDir/fits_output.log"
 	echo "Finished."
 }
 
-createLogDir() {
-  if [[ ! -d "$fitsLogDir" ]]
-  then
+createOutputDirs() {
+	if [[ -d "$fitsLogDir" ]]
+	then
+		rm -rf "$fitsLogDir"
+	fi
+	if [[ -d "$fitsOutputDir" ]]
+	then
+		rm -rf "$fitsOutputDir"
+	fi
     mkdir -p $fitsLogDir
-  fi
+    mkdir -p $fitsOutputDir
 }
 
 checkParams "$@";
 checkFitsVersion;
-createLogDir;
+createOutputDirs;
 executeFits;

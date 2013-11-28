@@ -202,46 +202,6 @@ checkGitStatus() {
 	fi
 }
 
-# Invoke the ant-release script, exit on failure
-buildFits() {
-	bash "$SCRIPT_DIR/fits-ant-release.sh"
-	if (( $? != 0))
-	then
-		resetHead
-		exit $?;
-	fi
-}
-
-# Find the unzipped release directory
-findRelease() {
-	releaseDir=$(find $fitsReleaseDir -name "fits-*" -type d 2>&1)
-	if [[ ! -d "$releaseDir" ]]
-	then
-		echo "FITS release NOT found."
-		echo "$releaseDir"
-		resetHead
-		checkoutCurrentBranch;
-		exit 1;
-	fi
-}
-
-# Setup output directory and execute FITS
-executeFits() {
-  githash=$1
-	outputDir="$fitsOutputDir/$githash"
-	if [[ -d "$outputDir" ]]
-	then
-		rm -rf "$outputDir"
-	fi
-	mkdir -p "$outputDir"
-	bash "$SCRIPT_DIR/execute-fits.sh" "-c" "$paramCorporaLoc" "-f" "$releaseDir"
-	if (( $? != 0))
-	then
-		resetHead;
-		exit $?;
-	fi
-}
-
 # Output warning r.e. current git status, IF warning flag set 
 resetHead() {
 	if (( $resetHead == 1 ))
@@ -261,9 +221,17 @@ checkoutCurrentBranch() {
   fi
 }
 
+# Invoke the checkGitStatus script, exit on failure
+buildAndExecuteFits() {
+	bash "$SCRIPT_DIR/fits-build-and-execute.sh" -c "$paramCorporaLoc" -o "$globalOutput"
+	if (( $? != 0))
+	then
+		resetHead
+		exit $?;
+	fi
+}
 
 testHeadAgainstMergeBase() {
-	echo "java  -jar $paramFitsToolLoc -s $fitsOutputDir/$mergebasehash -c $fitsOutputDir/$githeadhash -k $githeadhash"
  	java  -jar "$paramFitsToolLoc" -s "$fitsOutputDir/$mergebasehash" -c "$fitsOutputDir/$githeadhash" -k "$githeadhash"
  	case "$?" in
  		# Test passed so no need to look for broken revision
@@ -277,14 +245,14 @@ testHeadAgainstMergeBase() {
  		125 )
  		echo "Test of HEAD against branch base could not be performed"
  		resetHead
- 		exit 1;
+ 		exit 125;
  		;;
  		# Test failed, exit for now but the start for the
 		# revision that broke the test starts here
  		* )
  		echo "Test of HEAD against branch base failed"
  		resetHead
- 		exit 1;
+ 		return 1;
  	esac
 }
 
@@ -302,31 +270,30 @@ echo "In git repo ${PWD##*/}"
 # There's a master branch and it's not checked out?
 checkMaster;
 echo "Testing branch: $currentBranch"
-# Grab the git details
+# Grab the SHA IDs of the current HEAD and the branch's merge BASE commits
 getHeadHash
 findMergeBaseHash;
 echo "Compring HEAD $githeadhash against merge BASE $mergebasehash"
 # Set reset HEAD flag, we're about to check out changes
 resetHead=1
-# Checkout master branch base
+# Checkout master branch BASE revision
 checkoutRevision "$mergebasehash"
-# Build master revision for comparison
-echo "build"
-buildFits;
-echo "find"
-findRelease;
-# Execute FITS sending output to hash named output dir
-echo "execute"
-executeFits "$mergebasehash";
+# Build and execute branch BASE revision for comparison
+buildAndExecuteFits
+
 # Build current version of FITS
 resetHead;
+# Checkout current HEAD revision
 checkoutRevision "$githeadhash"
-buildFits;
-findRelease;
-# Execute FITS sending output to hash named output dir
-executeFits "$githeadhash";
+# Build and execute current HEAD revision
+buildAndExecuteFits
+
+# Compare the results
 testHeadAgainstMergeBase;
+if [[ "$?" == "1" ]]
+then
+	echo "It's git-bisect time."
+fi
 
 # Reset repo to head
 resetHead;
-checkoutCurrentBranch;
