@@ -43,8 +43,8 @@
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 # Globals to hold the checked param vals
-paramFitsToolLoc=
-paramCorporaLoc=
+paramFitsToolLoc=""
+paramCorporaLoc=""
 resetHead=0
 currentBranch=
 globalOutput=".bb-testing"
@@ -56,16 +56,27 @@ fitsReleaseDir="$globalOutput/release"
 
 # Check the passed params to avoid disapointment
 checkParams () {
-# Ensure we have the correct number of params
-	if [[ "$#" -ne 2 ]]
+	OPTIND=1	# Reset in case getopts previously used
+
+	while getopts "h?t:c:" opt; do	# Grab the options
+		case "$opt" in
+		h|\?)
+			showHelp
+			exit 0
+			;;
+		t)	paramFitsToolLoc=$OPTARG
+			;;
+		c)	paramCorporaLoc=$OPTARG
+			;;
+		esac
+	done
+	
+	if [ -z "$paramFitsToolLoc" ] || [ -z "$paramCorporaLoc" ]
 	then
-		echo "$# Two parameters expected: $1"
-		exit 1
+		showHelp
+		exit 0
 	fi
-	
-	paramFitsToolLoc="$1"
-	paramCorporaLoc="$2"
-	
+		
 # Check that the FITS testing tool exists
 	if  [[ ! -e "$paramFitsToolLoc" ]]
 	then
@@ -79,6 +90,14 @@ checkParams () {
 		echo "Corpora directory not found: $paramCorporaLoc"
 		exit 1;
 	fi
+}
+
+# Show usage message
+showHelp() {
+	echo "usage: fits-test [-t <pathToTestTool>] [-c <pathToCorpora>] [-h|?]"
+	echo ""
+	echo "  pathToTestTool : The full path to the FITS testing tool."
+	echo "  pathToCorpora  : The path to the root directory of the test corpora."
 }
 
 # Checks if there is a .bb-testing dir in the current working dir.
