@@ -31,13 +31,15 @@
 # https://www.kernel.org/pub/software/scm/git/docs/git-bisect.html
 # http://git-scm.com/book/en/Git-Tools-Debugging-with-Git
 #
-# Script expects 2 parameters:
+# usage: fits-test [-t <path>] [-c <path>] [-b] [-h|?]
+# Options:
+#  -t <path>  use the FITS testing tool at <path>, REQUIRED.
+#  -c <path>  run tests on corpora at directory <path>, REQUIRED.
+#  -b         invoke git-bisect if test against merge base fails.
+#  -h | -?    show this message.
 #
-#  $1 path to the FITS testing tool to use
-#     Mandatory
+# SEE helpOut function for full message.
 #
-#  $2 path to root directory of test corpora to use 
-#     Mandatory
 ##
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -66,7 +68,6 @@ checkParams () {
 			exit 0
 			;;
 		b)	paramGitBisect=1
-			echo "BISECT Requested."
 			;;
 		t)	paramFitsToolLoc=$OPTARG
 			;;
@@ -74,7 +75,10 @@ checkParams () {
 			;;
 		esac
 	done
-	
+	shift $((OPTIND-1))
+
+	[ "$1" = "--" ] && shift
+		
 	if [ -z "$paramFitsToolLoc" ] || [ -z "$paramCorporaLoc" ]
 	then
 		showHelp
@@ -98,17 +102,24 @@ checkParams () {
 
 # Show usage message
 showHelp() {
-	echo "usage: fits-test [-t <path>] [-c <path>] [-h|?]"
+	echo "usage: fits-test [-t <path>] [-c <path>] [-b] [-h|?]"
 	echo ""
 	echo "Should be run from a FITS git repository, from a checked out development branch."
-	echo "The script runs a test tool against the development HEAD, then repeats against the branch BASE, i.e. the base commit of the branch."
-	echo "If the tests fail for the current HEAD and the -b flag is set git-bisect is used to find the broken commit."
-	echo ""
+	echo "The script first locates the current branch BASE, its root in master."
+	echo "This version of FITS is checked out, built and executed against the corpora.
+	echo "Its output XML files and stdout/stderr are preserved for testing."
+	echo "Next current HEAD is checked out, built and executed against the corpora."
+	echo "Its output XML files and stdout/stderr are preserved for testing."
+	echo "Next the test tool is used to compare HEADs output with that of merge BASE."
+	echo "If the tests pass or fail to run, or the -b is not set the script reports and terminates.
+	echo "If the tests fail and -b is set then git-bisect will be used to test the"
+	echo "branch history until the commit that first caused the test to fail is located."
+	echo "" 
 	echo "Options:"
 	echo "  -t <path>  use the FITS testing tool at <path>, REQUIRED."
 	echo "  -c <path>  run tests on corpora at directory <path>, REQUIRED."
 	echo "  -b         invoke git-bisect if test against merge base fails."
-	echo "  -h | ?     show this message."
+	echo "  -h | -?    show this message."
 }
 
 # Checks if there is a .bb-testing dir in the current working dir.
@@ -209,6 +220,7 @@ findRelease() {
 		echo "FITS release NOT found."
 		echo "$releaseDir"
 		resetHead
+		checkoutCurrentBranch;
 		exit 1;
 	fi
 }
@@ -222,11 +234,10 @@ executeFits() {
 		rm -rf "$outputDir"
 	fi
 	mkdir -p "$outputDir"
-	bash "$SCRIPT_DIR/execute-fits.sh" "$paramCorporaLoc" "$outputDir" "$releaseDir" "$githash"
+	bash "$SCRIPT_DIR/execute-fits.sh" "-c" "$paramCorporaLoc" "-f" "$releaseDir"
 	if (( $? != 0))
 	then
 		resetHead;
-    checkoutCurrentBranch;
 		exit $?;
 	fi
 }
@@ -236,7 +247,9 @@ resetHead() {
 	if (( $resetHead == 1 ))
 	then
 		git reset HEAD --hard
+		resetHead=0
 	fi
+	checkoutCurrentBranch;
 }
 
 # Checks out the starting branch if the the parameter is set.
@@ -250,21 +263,20 @@ checkoutCurrentBranch() {
 
 
 testHeadAgainstMergeBase() {
+	echo "java  -jar $paramFitsToolLoc -s $fitsOutputDir/$mergebasehash -c $fitsOutputDir/$githeadhash -k $githeadhash"
  	java  -jar "$paramFitsToolLoc" -s "$fitsOutputDir/$mergebasehash" -c "$fitsOutputDir/$githeadhash" -k "$githeadhash"
  	case "$?" in
  		# Test passed so no need to look for broken revision
- 		"0" )
+ 		0 )
  		echo "Test of HEAD against branch base succeeded, no broken revision to find."
  		resetHead   
-    checkoutCurrentBranch; 
  		exit 0;
  		;;
  		# Test of dev branch HEAD against master couldn't be performed
 		# We probably don't want to go on until tests execute
- 		"125" )
+ 		125 )
  		echo "Test of HEAD against branch base could not be performed"
  		resetHead
-    checkoutCurrentBranch
  		exit 1;
  		;;
  		# Test failed, exit for now but the start for the
@@ -272,7 +284,6 @@ testHeadAgainstMergeBase() {
  		* )
  		echo "Test of HEAD against branch base failed"
  		resetHead
-    checkoutCurrentBranch;
  		exit 1;
  	esac
 }
@@ -293,27 +304,27 @@ checkMaster;
 echo "Testing branch: $currentBranch"
 # Grab the git details
 getHeadHash
-echo "HEAD $githeadhash"
 findMergeBaseHash;
-echo "BASE commit $mergebasehash"
+echo "Compring HEAD $githeadhash against merge BASE $mergebasehash"
+# Set reset HEAD flag, we're about to check out changes
+resetHead=1
+# Checkout master branch base
+checkoutRevision "$mergebasehash"
+# Build master revision for comparison
+echo "build"
+buildFits;
+echo "find"
+findRelease;
+# Execute FITS sending output to hash named output dir
+echo "execute"
+executeFits "$mergebasehash";
 # Build current version of FITS
+resetHead;
+checkoutRevision "$githeadhash"
 buildFits;
 findRelease;
 # Execute FITS sending output to hash named output dir
 executeFits "$githeadhash";
-
-# Set reset HEAD flag, we're about to check out changes
-resetHead=1
-resetHead;
-checkoutCurrentBranch;
-# Checkout master branch base
-checkoutRevision "$mergebasehash"
-# Build master revision for comparison
-buildFits;
-findRelease;
-# Execute FITS sending output to hash named output dir
-executeFits "$mergebasehash";
-
 testHeadAgainstMergeBase;
 
 # Reset repo to head
