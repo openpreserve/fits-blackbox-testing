@@ -8,7 +8,6 @@ import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
-import org.dom4j.Node;
 
 import edu.harvard.hul.fdc.resolver.DiffResolver;
 import edu.harvard.hul.fdc.resolver.FileInfoResolver;
@@ -31,7 +30,20 @@ public class FitsXMLComparator {
       Document sDoc = DocumentHelper.parseText( source );
       Document cDoc = DocumentHelper.parseText( candidate );
 
-      treeWalk( sDoc, new NodeFoundCallback( fileName, cDoc ) );
+      Element element = sDoc.getRootElement();
+      List<Element> elements = element.elements();
+      for (Element e : elements) {
+        String nodeName = e.getName();
+        if (nodeName != null) {
+          DiffResolver diffResolver = mResolvers.get( nodeName );
+          if (diffResolver != null) {
+            String xPath = e.getPath();
+            Element candidateNode = (Element) cDoc.selectSingleNode( xPath );
+            diffResolver.resolve( fileName, e, candidateNode );
+          }
+
+        }
+      }
 
     } catch (DocumentException e) {
       e.printStackTrace();
@@ -51,46 +63,6 @@ public class FitsXMLComparator {
     }
 
     return tmp.report();
-  }
-
-  private void treeWalk( Document document, NodeFoundCallback callback ) {
-    Element element = document.getRootElement();
-    List<Element> elements = element.elements();
-    for (Element e : elements) {
-      callback.callback( e );
-    }
-  }
-
-  private class NodeFoundCallback {
-
-    private String mFileName;
-
-    private Document mCanditate;
-
-    public NodeFoundCallback( String fileName, Document candidate ) {
-      mFileName = fileName;
-      mCanditate = candidate;
-    }
-
-    public void callback( Element node ) {
-      String nodeName = node.getName();
-      if (nodeName != null) {
-        DiffResolver diffResolver = mResolvers.get( nodeName );
-        if (diffResolver != null) {
-          Element candidate = findCandidate( node );
-          diffResolver.resolve( mFileName, node, candidate );
-        }
-
-      }
-    }
-
-    private Element findCandidate( Element source ) {
-      String xPath = source.getPath();
-      Node candidateNode = mCanditate.selectSingleNode( xPath );
-      // System.out.println( "CANDIDATE" );
-      // System.out.println( candidateNode.asXML() );
-      return (Element) candidateNode;
-    }
   }
 
 }
