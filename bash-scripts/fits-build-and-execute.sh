@@ -100,7 +100,7 @@ findRelease() {
 
 # Setup output directory and execute FITS
 executeFits() {
-	bash "$SCRIPT_DIR/execute-fits.sh" -c "$corporaDir" -f "$releaseDir" -a "$outRoot"
+	bash "$SCRIPT_DIR/execute-fits.sh" -c "$corporaDir" -f "$releaseDir" -o "$outRoot"
 	if (( $? != 0))
 	then
 		exit $?;
