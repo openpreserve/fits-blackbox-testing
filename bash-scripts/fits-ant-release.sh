@@ -62,15 +62,13 @@ showHelp() {
 # Build the FITS project invoking ant tasks
 buildFits() {
 	cd "$buildDir"
+	echo "Building ${PWD##*/}"
 	antclean=$(ant clean 2>&1)
-	echo "${PWD##*/}: ant clean"
 	testAntCommand "$antclean"
  
 	antCompile=$(ant compile 2>&1)
-	echo "${PWD##*/}: ant compile"
 	testAntCommand "$antCompile"
 	
-	echo "${PWD##*/}: ant release"
 	if [[ -d "$releaseDir" ]]
 	then
 		rm -rf "$releaseDir"
