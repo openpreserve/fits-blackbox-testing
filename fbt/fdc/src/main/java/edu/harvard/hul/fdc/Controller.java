@@ -137,8 +137,10 @@ public class Controller {
 
         candidateFiles.remove( cf );
       } else {
-        mLogger.submitLog( "Missing candidate file: " + cf.getName() );
-        handleState( ControllerState.FILE_MISSING_CANDIDATE );
+        if (!isSystemFile( cf.getName() )) {
+          mLogger.submitLog( "Missing candidate file: " + cf.getName() );
+          handleState( ControllerState.FILE_MISSING_CANDIDATE );
+        }
 
       }
 
@@ -148,8 +150,10 @@ public class Controller {
 
     if (candidateFiles.size() > 0) {
       for (File f : candidateFiles) {
-        mLogger.submitLog( "Missing source file: " + f.getName() );
-        handleState( ControllerState.FILE_MISSING_SOURCE );
+        if (!isSystemFile( f.getName() )) {
+          mLogger.submitLog( "Missing source file: " + f.getName() );
+          handleState( ControllerState.FILE_MISSING_SOURCE );
+        }
       }
     }
 
@@ -164,6 +168,15 @@ public class Controller {
       return name.endsWith( "fits.xml" );
     }
 
+  }
+
+  private boolean isSystemFile( String name ) {
+    boolean systemFile = false;
+    if (name.startsWith( ".DS_Store" )) {
+      systemFile = true;
+    }
+
+    return systemFile;
   }
 
 }
