@@ -10,19 +10,23 @@
 #  -t <path>  use the FITS testing tool at <path>.
 #  -c <path>  run tests on corpora at directory <path>.
 #  -s <path>  path to baseline output for testing against.
+#  -o <path>  path to root of all output, defaults to /tmp/fits/bb-testing .
 ##
 
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
+DEFAULT_ROOT="/tmp/fits/bb-testing"
+
 paramToolPath=""
 paramCorporaPath=""
 paramBaselinePath=""
+outRoot="$DEFAULT_ROOT"
 gitHash=""
 # Check the passed params to avoid disapointment
 checkParams () {
 	OPTIND=1	# Reset in case getopts previously used
 
-	while getopts "t:c:s:" opt; do	# Grab the options
+	while getopts "t:c:s:o:" opt; do	# Grab the options
 		case "$opt" in
 		t)	paramToolPath=$OPTARG
 			;;
@@ -30,7 +34,9 @@ checkParams () {
 			;;
 		s)	paramBaselinePath=$OPTARG
 			;;
-		esac
+		o)	outRoot=$OPTARG
+			;;
+				esac
 	done
 	shift $((OPTIND-1))
 
@@ -54,61 +60,31 @@ checkParams () {
 		exit 125;
 	fi
 
-    gitHash=$(git rev-parse HEAD 2>&1)
-	if [[ "x$gitHash" == "x" ]]
+	gitHash=$(git rev-parse HEAD 2>&1)
+	shaRegEx="^[0-9a-f]{40}$"
+	if [[ ! $gitHash =~ $shaRegEx ]]
 	then
-    	echo "Git commit cannot be empty"
-    	exit 1;
-	fi
-}
-
-# Invoke the ant-release script, exit on failure
-buildFits() {
-	bash "$SCRIPT_DIR/fits-ant-release.sh"
-	if (( $? != 0))
-	then
-		resetHead
-		exit $?;
-	fi
-}
-
-# Find the unzipped release directory
-findRelease() {
-	releaseDir=$(find $fitsReleaseDir -name "fits-*" -type d 2>&1)
-	if [[ ! -d "$releaseDir" ]]
-	then
-		echo "FITS release NOT found."
-		echo "$releaseDir"
-		resetHead
-		checkoutCurrentBranch;
+		echo "Cannot determine current commit hash: $gitHash"
 		exit 1;
 	fi
+	# Set the output dir
+	fitsOutputDir="$outRoot/output/$gitHash"
 }
 
-# Setup output directory and execute FITS
-executeFits() {
-  githash=$1
-	outputDir="$fitsOutputDir/$githash"
-	if [[ -d "$outputDir" ]]
+# Invoke the checkGitStatus script, exit on failure
+buildAndExecuteFits() {
+	bash "$SCRIPT_DIR/fits-build-and-execute.sh" -c "$paramCorporaPath" -o "$outRoot"
+		if (( $? != 0))
 	then
-		rm -rf "$outputDir"
-	fi
-	mkdir -p "$outputDir"
-	bash "$SCRIPT_DIR/execute-fits.sh" -c "$paramCorporaLoc" -f "$releaseDir"
-	if (( $? != 0))
-	then
-		resetHead;
+		resetHead
 		exit $?;
 	fi
 }
 
-checkParams
-# Build master revision for comparison
-echo "TEST:build"
-buildFits;
-echo "TEST:find"
-findRelease;
-# Execute FITS sending output to hash named output dir
-echo "TEST:execute"
-executeFits "$githash";
-
+checkParams "$@";
+buildAndExecuteFits
+echo "java  -jar $paramToolPath -s $paramBaselinePath -c $fitsOutputDir -k $gitHash"
+java  -jar "$paramToolPath" -s "$paramBaselinePath" -c "$fitsOutputDir" -k "$gitHash"
+exitStat="$?"
+git clean -f
+exit $exitStat;
