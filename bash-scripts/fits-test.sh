@@ -51,8 +51,6 @@ paramGitBisect=0
 resetHead=0
 currentBranch=
 globalOutput=".bb-testing"
-fitsOutputDir="$globalOutput/output"
-fitsReleaseDir="$globalOutput/release"
 ##
 # Functions defined first, control flow at the bottom of script
 ##
@@ -182,6 +180,7 @@ findMergeBaseHash() {
 		echo "$currentBranch is a fresh branch and doesn't differ from its master root"
 		exit 1
 	fi
+	baselineOutputDir="$globalOutput/output/$mergebasehash"
 }
 
 # Checkout a particular revision on the current branch by hash
@@ -231,8 +230,9 @@ buildAndExecuteFits() {
 	fi
 }
 
-testHeadAgainstMergeBase() {
- 	java  -jar "$paramFitsToolLoc" -s "$fitsOutputDir/$mergebasehash" -c "$fitsOutputDir/$githeadhash" -k "$githeadhash"
+# Invoke the checkGitStatus script, exit on failure
+testCurrentCheckout() {
+	bash "$SCRIPT_DIR/fits-test-current.sh" -t "$paramFitsToolLoc" -c "$paramCorporaLoc" -s "$baselineOutputDir" -o "$globalOutput"
  	case "$?" in
  		# Test passed so no need to look for broken revision
  		0 )
@@ -256,6 +256,7 @@ testHeadAgainstMergeBase() {
  	esac
 }
 
+
 ##
 # Script Execution Starts HERE 
 ##
@@ -269,7 +270,7 @@ checkGitStatus;
 echo "In git repo ${PWD##*/}"
 # There's a master branch and it's not checked out?
 checkMaster;
-echo "Testing branch: $currentBranch"
+echo "Testing branch: $curgitrentBranch"
 # Grab the SHA IDs of the current HEAD and the branch's merge BASE commits
 getHeadHash
 findMergeBaseHash;
@@ -285,15 +286,15 @@ buildAndExecuteFits
 resetHead;
 # Checkout current HEAD revision
 checkoutRevision "$githeadhash"
-# Build and execute current HEAD revision
-buildAndExecuteFits
+# Build and execute and test current HEAD revision
+testCurrentCheckout
 
-# Compare the results
-testHeadAgainstMergeBase;
-if [[ "$?" == "1" ]]
+
+if [[ "$?" == "1" ]] && [[ "$paramGitBisect" == "1" ]]
 then
-	echo "It's git-bisect time."
+	git bisect start "$githeadhash" "$mergebasehash"
+	git bisect run "$SCRIPT_DIR/fits-test-current.sh" -t "$paramFitsToolLoc" -c "$paramCorporaLoc" -s "$baselineOutputDir"
+	git checkout .
 fi
 
-# Reset repo to head
 resetHead;
