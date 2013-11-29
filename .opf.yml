@@ -2,6 +2,6 @@ name: FITS Black Box Testing
 vendor: OPF
 maintainer:
   name: Carl Wilson
-        email: carl( AT )openplanetsfoundation( DOT )org
+  email: carl( AT )openplanetsfoundation( DOT )org
   name: Petar Petrov
-        email: petar( AT )creativepragmatics( DOT )com
+  email: petar( AT )creativepragmatics( DOT )com
