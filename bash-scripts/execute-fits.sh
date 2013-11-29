@@ -9,14 +9,14 @@
 # Options:
 #  -f <path>  path to FITS tool, defaults to ./.bb-testing/release/ .
 #  -c <path>  path to test corpora to invoke FITS upon, defaults to ./.corpora/ .
-#  -a <path>  path to root of all output, defaults to ./bb-testing/ .
+#  -o <path>  path to root of all output, defaults to /tmp/fits/bb-testing .
 #  
 ##
 
 FITS_SHELL="fits.sh"
 
-globalOutput=".bb-testing"
-fitsDir="ls $globalOutput/release"
+globalOutput="/tmp/fits/bb-testing"
+fitsDir="./.bb-testing/release"
 fitsOutputDir="output"
 fitsLogDir="log"
 corporaDir=".corpora"
@@ -24,13 +24,13 @@ corporaDir=".corpora"
 checkParams () {
 	OPTIND=1	# Reset in case getopts previously used
 
-	while getopts "f:c:a:" opt; do	# Grab the options
+	while getopts "f:c:o:" opt; do	# Grab the options
 		case "$opt" in
 		f)	fitsDir=$OPTARG
 			;;
 		c)	corporaDir=$OPTARG
 			;;
-		a)	globalOutput=$OPTARG
+		o)	globalOutput=$OPTARG
 			;;
 		esac
 	done
