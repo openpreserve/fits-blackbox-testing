@@ -38,7 +38,7 @@ checkParams () {
 
 # Check we're in a git repository, and there's no uncommitted changes 
 checkGitStatus() {
-	gitstatus=$(git status -z 2>&1)
+	gitstatus=$(git status --porcelain 2>&1)
 	while IFS= read -r
 	do
 		# Check we're in a git repo
